@@ -11,7 +11,7 @@ module FPU
   (input  logic [`BIT_WIDTH - 1:0] fpuIn1, fpuIn2,
    input  fpuOp_t                  op,
    output logic [`BIT_WIDTH - 1:0] fpuOut,
-   output logic [1:0]              condCodes);
+   output logic [3:0]              condCodes);
 
   // Condition codes to set.
   logic Z, C, N, V;
@@ -33,8 +33,8 @@ module FPU
 
   logic [`BIT_WIDTH - 1:0] fpuAddOut;
   logic [`BIT_WIDTH - 1:0] fpuSubOut;
-  logic [1:0]              addCondCodes;
-  logic [1:0]              subCondCodes;
+  logic [3:0]              addCondCodes;
+  logic [3:0]              subCondCodes;
 
   fpuAddSub fpuAdder(.sub(1'b0), .fpuAddSubIn1(fpuIn1), .fpuAddSubIn2(fpuIn2),
                      .fpuAddSubS1(fpuInS1), .fpuAddSubS2(fpuInS2),
