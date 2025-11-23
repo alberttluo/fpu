@@ -16,9 +16,9 @@ module FPU
               int SIG_HI    = EXP_LO - 1,
               int SIG_LO    = 0)
   (input  logic [BIT_WIDTH - 1:0] fpuIn1, fpuIn2,
-   input  fpuOp_t                  op,
+   input  fpuOp_t                 op,
    output logic [BIT_WIDTH - 1:0] fpuOut,
-   output logic [3:0]              condCodes);
+   output logic [3:0]             condCodes);
 
   // Condition codes to set.
   logic Z, C, N, V;
@@ -43,17 +43,20 @@ module FPU
   logic [3:0]              addCondCodes;
   logic [3:0]              subCondCodes;
 
-  fpuAddSub #(.*) fpuAdder(.sub(1'b0), .fpuAddSubIn1(fpuIn1), .fpuAddSubIn2(fpuIn2),
-                     .fpuAddSubS1(fpuInS1), .fpuAddSubS2(fpuInS2),
-                     .fpuAddSubE1(fpuInE1), .fpuAddSubE2(fpuInE2),
-                     .fpuAddSubM1(fpuInM1), .fpuAddSubM2(fpuInM2),
-                     .fpuAddSubOut(fpuAddOut), .condCodes(addCondCodes));
+  fpuAddSub #(.BIT_WIDTH(BIT_WIDTH), .EXP_WIDTH(EXP_WIDTH), .SIG_WIDTH(SIG_WIDTH))
+             fpuAdder (.sub(1'b0), .fpuAddSubIn1(fpuIn1), .fpuAddSubIn2(fpuIn2),
+                       .fpuAddSubS1(fpuInS1), .fpuAddSubS2(fpuInS2),
+                       .fpuAddSubE1(fpuInE1), .fpuAddSubE2(fpuInE2),
+                       .fpuAddSubSig1(fpuInM1), .fpuAddSubSig2(fpuInM2),
+                       .fpuAddSubOut(fpuAddOut), .condCodes(addCondCodes));
 
-  fpuAddSub #(.*) fpuSubtracter(.sub(1'b1), .fpuAddSubIn1(fpuIn1), .fpuAddSubIn2(fpuIn2),
-                          .fpuAddSubS1(fpuInS1), .fpuAddSubS2(fpuInS2),
-                          .fpuAddSubE1(fpuInE1), .fpuAddSubE2(fpuInE2),
-                          .fpuAddSubM1(fpuInM1), .fpuAddSubM2(fpuInM2),
-                          .fpuAddSubOut(fpuSubOut), .condCodes(subCondCodes));
+  fpuAddSub #(.BIT_WIDTH(BIT_WIDTH), .EXP_WIDTH(EXP_WIDTH), .SIG_WIDTH(SIG_WIDTH))
+             fpuSubtracter (.sub(1'b1), .fpuAddSubIn1(fpuIn1), .fpuAddSubIn2(fpuIn2),
+                            .fpuAddSubS1(fpuInS1), .fpuAddSubS2(fpuInS2),
+                            .fpuAddSubE1(fpuInE1), .fpuAddSubE2(fpuInE2),
+                            .fpuAddSubSig1(fpuInM1), .fpuAddSubSig2(fpuInM2),
+                            .fpuAddSubOut(fpuSubOut), .condCodes(subCondCodes));
+
   always_comb begin
     // Unset all condition codes by default.
     Z = 0;

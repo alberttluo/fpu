@@ -31,25 +31,26 @@ module fpuAddSub
    output logic [BIT_WIDTH - 1:0] fpuAddSubOut,
    output logic [3:0]             condCodes);
 
-  // Explicit condition codes for carry, overflow, negative, and zero.
-  logic C, V, N, Z;
+  // Explicit condition codes.
+  logic Z, C, N, V;
+  assign condCodes = {Z, C, N, V};
 
   // Effective sign bit for operand 2 -- turns subtractions into additions by
   // flipping the sign bit.
   logic effS2;
-  assign effS2 = fpuAddSubIn2 ^ sub;
+  assign effS2 = fpuAddSubS2 ^ sub;
 
   // 1 if E1 < E2, 0 otherwise.
   logic shiftIn1;
 
   // Amount by which to right shift to align points.
   logic [$clog2(EXP_WIDTH) - 1:0] expShift;
+  logic [EXP_WIDTH - 1:0] adjExp;
 
   // Adjusted and non-adjusted significands/signs.
   logic [SIG_WIDTH - 1:0] adjSig;
-  logic adjSign;
-
   logic [SIG_WIDTH - 1:0] nonAdjSig;
+  logic adjSign;
   logic nonAdjSign;
 
   // Output significand.
@@ -71,11 +72,21 @@ module fpuAddSub
 
   // Right shift the smaller exponent by the difference in exponents.
   assign shiftIn1  = (fpuAddSubE1 < fpuAddSubE2);
-  assign expShift  = (shiftIn1) ? (effS2 - fpuAddSubIn1) : (fpuAddSubIn1 - effS2);
-  assign {adjSign, adjSig} = (shiftIn1) ? {fpuAddSubS1, fpuAddSubSig1 >> expShift} :
-                                          {effS2, fpuAddSubSig2 >> expShift};
-  assign {nonAdjSign, nonAdjSig} = (shiftIn1) ? {effS2, fpuAddSubSig2} :
-                                                   {fpuAddSubS1, fpuAddSubSig1};
+
+  always_comb begin
+    if (shiftIn1) begin
+      expShift = (fpuAddSubE2 - fpuAddSubE1);
+      adjExp = fpuAddSubS2;
+      {adjSign, adjSig} = {fpuAddSubS1, fpuAddSubSig1 >> expShift};
+      {nonAdjSign, nonAdjSig} = {effS2, fpuAddSubSig2};
+    end
+    else begin
+      expShift = (fpuAddSubE1 - fpuAddSubE2);
+      adjExp = fpuAddSubS1;
+      {adjSign, adjSig} = {effS2, fpuAddSubSig2 >> expShift};
+      {nonAdjSign, nonAdjSig} = {fpuAddSubS1, fpuAddSubSig2};
+    end
+  end
 
   // Assign large/small operands based on magnitude.
   always_comb begin
@@ -105,14 +116,15 @@ module fpuAddSub
     end
   end
 
-  assign extSigOut = sigLarge + sigSmall;
   assign C = extSigOut[SIG_WIDTH];
 
   // Overflow if addition of two positives is negative, or subtraction of two
   // negatives is positive.
-  assign V = (~sub & ~extOpS1 & ~extOpS2 & outS) | (sub & extOpS2 & extOpS2 & ~outS);
-  assign Z = (outS == '0);
-  assign N = outS;
+  assign V = 1'b0; // TODO: Overflow logic.
+  assign Z = (extSigOut == '0);
+  assign N = outSign;
+
+  assign fpuAddSubOut = {outSign, adjExp, extSigOut[SIG_WIDTH - 1:0]};
 
   // TODO: Implement normalization.
 
