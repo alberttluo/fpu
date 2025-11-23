@@ -8,14 +8,7 @@
 `ifndef sv_CONSTANTS
 `define sv_CONSTANTS
 
-`define NUM_OPS        6
-`define BIT_WIDTH      32
-`define EXP_WIDTH      8
-`define EXP_HI         `BIT_WIDTH - 2
-`define EXP_LO         `BIT_WIDTH - 2 - `EXP_WIDTH
-`define MANTISSA_WIDTH 23
-`define MANTISSA_HI    `EXP_LO - 1
-`define MANTISSA_LO    0
+`define NUM_OPS 6
 
 typedef enum logic [1:0] {
   FP16,
