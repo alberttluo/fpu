@@ -1,0 +1,6 @@
+*.key
+*.daidir
+*.out
+*.sh
+csrc
+
