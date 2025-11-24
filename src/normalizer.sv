@@ -15,21 +15,21 @@ module fpuNormalizer16
   
   always_comb begin
     if (unnormalizedIn.frac[`FP16_FRACW - 1:0]) lzc = 0;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 2:0]) lzc = 1;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 3:0]) lzc = 2;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 4:0]) lzc = 3;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 5:0]) lzc = 4;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 6:0]) lzc = 5;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 7:0]) lzc = 6;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 8:0]) lzc = 7;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 9:0]) lzc = 8;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 1:0]) lzc = 1;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 2:0]) lzc = 2;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 3:0]) lzc = 3;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 4:0]) lzc = 4;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 5:0]) lzc = 5;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 6:0]) lzc = 6;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 7:0]) lzc = 7;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 8:0]) lzc = 8;
     else lzc = 9;
   end
 
   always_comb begin
     normalizedOut.sign = unnormalizedIn.sign;
     if (C) begin
-      normalizedOut.frac = unnormalizedIn.frac >> 1;
+      normalizedOut.frac = {1'b1, $signed(unnormalizedIn.frac) >>> 1};
       normalizedOut.exp = unnormalizedIn.exp + 1;
     end
     else if (lzc <= unnormalizedIn.exp) begin

@@ -61,6 +61,7 @@ typedef struct packed {
 typedef struct packed {
   fp16_t largeNum;
   fp16_t smallNum;
+  logic [`FP16_EXPW - 1:0] expDiff;
   fp16_t alignedSmallNum;
   logic [`FP16_FRACW:0] extSigSum;
   fp16_t unnormalizedIn;

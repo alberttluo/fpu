@@ -31,9 +31,16 @@ module fpuAddSub16
 
   // Add significands.
   logic [`FP16_FRACW:0] extSigSum;
+  logic [`FP16_FRACW:0] extLargeFrac;
+  logic [`FP16_FRACW:0] extSmallFrac;
+
+  assign extLargeFrac = (largeNum.exp == '0) ? {1'b0, largeNum.frac} :
+                                               {1'b1, largeNum.frac};
+  assign extSmallFrac = (smallNum.exp == '0) ? {1'b0, smallNum.frac} :
+                                               {1'b1, smallNum.frac};
   assign extSigSum = (largeNum.sign == smallNum.sign) ? 
-                     ({1'b0, largeNum.frac} + {1'b0, alignedSmallNum.frac}) :
-                     ({1'b0, largeNum.frac} - {1'b0, alignedSmallNum.frac});
+                     (extLargeFrac + extSmallFrac) :
+                     (extLargeFrac - extSmallFrac);
 
   // Normalize floating point fields.
   fp16_t unnormalizedIn;
@@ -55,6 +62,7 @@ module fpuAddSub16
   assign addSubView = {
      largeNum,
      smallNum,
+     aligner.expDiff,
      alignedSmallNum,
      extSigSum,
      unnormalizedIn,
@@ -79,11 +87,14 @@ module fpuAddSubAligner
    output fp16_t alignedSmallNum);
 
   logic [`FP16_EXPW - 1:0] expDiff;
+  logic [`FP16_FRACW:0] extFrac;
 
   always_comb begin
     expDiff = largeNum.exp - smallNum.exp;
     alignedSmallNum.sign = smallNum.sign;
     alignedSmallNum.exp = largeNum.exp; 
-    alignedSmallNum.frac = smallNum.frac >> expDiff;
+    extFrac = $signed({smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac}) >>> expDiff;
   end
+
+  assign alignedSmallNum.frac = extFrac[`FP16_FRACW:1];
 endmodule : fpuAddSubAligner
