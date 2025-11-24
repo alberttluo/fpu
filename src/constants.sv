@@ -27,5 +27,19 @@ typedef enum logic[$clog2(`NUM_OPS) - 1:0] {
   FPU_UNDEF2
 } fpuOp_t;
 
+typedef struct packed {
+  logic effS2;
+  logic shiftIn1;
+  logic [$clog2(5) - 1:0] expShift;
+  logic [5 - 1:0] adjExp;
+  logic [10 - 1:0] adjSig;
+  logic [10 - 1:0] nonAdjSig;
+  logic adjSign;
+  logic nonAdjSign;
+  logic [10 - 1:0] sigLarge;
+  logic [10 - 1:0] sigSmall;
+  logic [10:0] extSigOut;
+  logic largeSign, smallSign;
+} addSubDebug_t;
 
 `endif

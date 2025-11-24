@@ -10,15 +10,17 @@
 module FPU
   #(parameter int BIT_WIDTH = 16,
               int EXP_WIDTH = 5,
-              int SIG_WIDTH = 10,
-              int EXP_HI    = BIT_WIDTH - 2,
-              int EXP_LO    = EXP_HI - EXP_WIDTH,
-              int SIG_HI    = EXP_LO - 1,
-              int SIG_LO    = 0)
+              int SIG_WIDTH = 10)
   (input  logic [BIT_WIDTH - 1:0] fpuIn1, fpuIn2,
    input  fpuOp_t                 op,
    output logic [BIT_WIDTH - 1:0] fpuOut,
-   output logic [3:0]             condCodes);
+   output logic [3:0]             condCodes,
+   output addSubDebug_t           addSubView);
+
+  localparam int EXP_HI    = BIT_WIDTH - 2;
+  localparam int EXP_LO    = EXP_HI - EXP_WIDTH;
+  localparam int SIG_HI    = EXP_LO - 1;
+  localparam int SIG_LO    = 0;
 
   // Condition codes to set.
   logic Z, C, N, V;
@@ -43,19 +45,24 @@ module FPU
   logic [3:0]              addCondCodes;
   logic [3:0]              subCondCodes;
 
+  addSubDebug_t addView;
+  addSubDebug_t subView;
+
   fpuAddSub #(.BIT_WIDTH(BIT_WIDTH), .EXP_WIDTH(EXP_WIDTH), .SIG_WIDTH(SIG_WIDTH))
              fpuAdder (.sub(1'b0), .fpuAddSubIn1(fpuIn1), .fpuAddSubIn2(fpuIn2),
                        .fpuAddSubS1(fpuInS1), .fpuAddSubS2(fpuInS2),
                        .fpuAddSubE1(fpuInE1), .fpuAddSubE2(fpuInE2),
                        .fpuAddSubSig1(fpuInM1), .fpuAddSubSig2(fpuInM2),
-                       .fpuAddSubOut(fpuAddOut), .condCodes(addCondCodes));
+                       .fpuAddSubOut(fpuAddOut), .condCodes(addCondCodes),
+                       .addSubView(addView));
 
   fpuAddSub #(.BIT_WIDTH(BIT_WIDTH), .EXP_WIDTH(EXP_WIDTH), .SIG_WIDTH(SIG_WIDTH))
              fpuSubtracter (.sub(1'b1), .fpuAddSubIn1(fpuIn1), .fpuAddSubIn2(fpuIn2),
                             .fpuAddSubS1(fpuInS1), .fpuAddSubS2(fpuInS2),
                             .fpuAddSubE1(fpuInE1), .fpuAddSubE2(fpuInE2),
                             .fpuAddSubSig1(fpuInM1), .fpuAddSubSig2(fpuInM2),
-                            .fpuAddSubOut(fpuSubOut), .condCodes(subCondCodes));
+                            .fpuAddSubOut(fpuSubOut), .condCodes(subCondCodes),
+                            .addSubView(subView));
 
   always_comb begin
     // Unset all condition codes by default.
@@ -68,11 +75,13 @@ module FPU
       FPU_ADD: begin
         fpuOut = fpuAddOut;
         condCodes = addCondCodes;
+        addSubView = addView;
       end
 
       FPU_SUB: begin
         fpuOut = fpuSubOut;
         condCodes = subCondCodes;
+        addSubView = subView;
       end
 
       FPU_MUL: begin

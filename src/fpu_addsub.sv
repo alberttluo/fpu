@@ -6,6 +6,8 @@
 */
 `default_nettype none
 
+`include "constants.sv"
+
 /*
 * Inputs:
 *   sub               : 1 for substraction, 0 for addition
@@ -29,7 +31,9 @@ module fpuAddSub
    input  logic [EXP_WIDTH - 1:0] fpuAddSubE1, fpuAddSubE2,
    input  logic [SIG_WIDTH - 1:0] fpuAddSubSig1, fpuAddSubSig2,
    output logic [BIT_WIDTH - 1:0] fpuAddSubOut,
-   output logic [3:0]             condCodes);
+   output logic [3:0]             condCodes,
+   // All internal signals for debugging.
+   output addSubDebug_t           addSubView);
 
   // Explicit condition codes.
   logic Z, C, N, V;
@@ -53,22 +57,19 @@ module fpuAddSub
   logic adjSign;
   logic nonAdjSign;
 
-  // Output significand.
-  logic [SIG_WIDTH - 1:0] outSig;
-  logic outS;
-
   // Final opearands after adjustments, split by magnitude.
   logic [SIG_WIDTH - 1:0] sigLarge;
   logic [SIG_WIDTH - 1:0] sigSmall;
 
   // Extended output significand.
   logic [SIG_WIDTH:0] extSigOut;
+  
+  // Normalized fields.
+  logic [SIG_WIDTH:0] normSig;
+  logic [EXP_WIDTH - 1:0] normExp;
 
   // Signs of large and small operands.
   logic largeSign, smallSign;
-
-  // Output sign.
-  logic outSign;
 
   // Right shift the smaller exponent by the difference in exponents.
   assign shiftIn1  = (fpuAddSubE1 < fpuAddSubE2);
@@ -108,24 +109,23 @@ module fpuAddSub
   always_comb begin
     if (largeSign == smallSign) begin
       extSigOut = {1'b0, sigLarge} + {1'b0, sigSmall};
-      outSign = largeSign;
     end
     else begin
       extSigOut = {1'b0, sigLarge} - {1'b0, sigSmall};
-      outSign = largeSign;
     end
   end
 
+  // Set condition codes. Overflow flag is set by normalizer.
   assign C = extSigOut[SIG_WIDTH];
-
-  // Overflow if addition of two positives is negative, or subtraction of two
-  // negatives is positive.
-  assign V = 1'b0; // TODO: Overflow logic.
   assign Z = (extSigOut == '0);
-  assign N = outSign;
+  assign N = largeSign;
 
-  assign fpuAddSubOut = {outSign, adjExp, extSigOut[SIG_WIDTH - 1:0]};
+  // Normalize all fields.
+  fpuNormalizer #(.BIT_WIDTH(BIT_WIDTH), .EXP_WIDTH(EXP_WIDTH), .SIG_WIDTH(SIG_WIDTH))
+                addSubNormalizer(.op(FPU_ADD), .*);
 
-  // TODO: Implement normalization.
+  assign fpuAddSubOut = {largeSign, normExp, normSig[SIG_WIDTH - 1:0]};
 
+  assign addSubView = {effS2, shiftIn1, expShift, adjExp, adjSig, nonAdjSig, adjSign, nonAdjSign,
+                       sigLarge, sigSmall, extSigOut, largeSign, smallSign};
 endmodule : fpuAddSub
