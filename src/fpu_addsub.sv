@@ -80,21 +80,3 @@ module fpuAddSubSorter
   assign {largeNum, smallNum} = ({fpuIn1.exp, fpuIn1.frac} > {fpuIn2.exp, fpuIn2.frac}) ? 
                                 {fpuIn1, fpuIn2} : {fpuIn2, fpuIn1};
 endmodule : fpuAddSubSorter
-
-// Aligns binary points of large and small number.
-module fpuAddSubAligner
-  (input  fp16_t largeNum, smallNum,
-   output fp16_t alignedSmallNum);
-
-  logic [`FP16_EXPW - 1:0] expDiff;
-  logic [`FP16_FRACW:0] extFrac;
-
-  always_comb begin
-    expDiff = largeNum.exp - smallNum.exp;
-    alignedSmallNum.sign = smallNum.sign;
-    alignedSmallNum.exp = largeNum.exp;
-    extFrac = {smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac} >> expDiff;
-  end
-
-  assign alignedSmallNum.frac = extFrac[`FP16_FRACW - 1:0];
-endmodule : fpuAddSubAligner
