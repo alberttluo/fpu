@@ -60,14 +60,14 @@ module fpuAddSub16
   assign fpuOut = normalizedOut;
 
   assign addSubView = {
-     largeNum,
-     smallNum,
-     aligner.expDiff,
-     alignedSmallNum,
-     extSigSum,
-     unnormalizedIn,
-     normalizedOut,
-     fpuOut
+   largeNum,
+   smallNum,
+   aligner.expDiff,
+   alignedSmallNum,
+   extSigSum,
+   unnormalizedIn,
+   normalizedOut,
+   fpuOut
   };
 endmodule : fpuAddSub16
 
@@ -92,9 +92,9 @@ module fpuAddSubAligner
   always_comb begin
     expDiff = largeNum.exp - smallNum.exp;
     alignedSmallNum.sign = smallNum.sign;
-    alignedSmallNum.exp = largeNum.exp; 
-    extFrac = $signed({smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac}) >>> expDiff;
+    alignedSmallNum.exp = largeNum.exp;
+    extFrac = {smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac} >> expDiff;
   end
 
-  assign alignedSmallNum.frac = extFrac[`FP16_FRACW:1];
+  assign alignedSmallNum.frac = extFrac[`FP16_FRACW - 1:0];
 endmodule : fpuAddSubAligner
