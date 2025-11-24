@@ -17,7 +17,7 @@ module FPU
    output logic [3:0]             condCodes,
    output addSubDebug_t           addSubView);
 
-  localparam int EXP_HI    = BIT_WIDTH - 2;
+  localparam int EXP_HI    = BIT_WIDTH - 1;
   localparam int EXP_LO    = EXP_HI - EXP_WIDTH;
   localparam int SIG_HI    = EXP_LO - 1;
   localparam int SIG_LO    = 0;

@@ -17,7 +17,7 @@ module fpuNormalizer
    output logic                   V);
 
   // Number of leading zeros (if normSig < 1).
-  logic [$clog2(SIG_WIDTH) - 1:0] lzc;
+  logic [$clog2(SIG_WIDTH + 1) - 1:0] lzc;
 
   // Top bit of the adjusted exponent -- used for overflow calculation.
   logic expTop;
@@ -34,8 +34,8 @@ module fpuNormalizer
     end
     // sigOut >= 2 case.
     else if (extSigOut[SIG_WIDTH]) begin
-      normSig = normSig >> '1;
-      normExp = normExp + '1;
+      normSig = normSig >> 1;
+      normExp = normExp + 1;
     end
     // 0 < normSig <= 2, but possibly < 1.
     else begin

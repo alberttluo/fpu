@@ -52,16 +52,19 @@ module fpuAddSub
   logic [EXP_WIDTH - 1:0] adjExp;
 
   // Adjusted and non-adjusted significands/signs.
-  logic [SIG_WIDTH - 1:0] adjSig;
-  logic [SIG_WIDTH - 1:0] nonAdjSig;
+  // Note that adjusted means the one that we are not "adjusting".
+  logic [SIG_WIDTH:0] adjSig;
+  logic [SIG_WIDTH:0] nonAdjSig;
   logic adjSign;
   logic nonAdjSign;
 
   // Final opearands after adjustments, split by magnitude.
-  logic [SIG_WIDTH - 1:0] sigLarge;
-  logic [SIG_WIDTH - 1:0] sigSmall;
+  logic [SIG_WIDTH:0] sigLarge;
+  logic [SIG_WIDTH:0] sigSmall;
 
-  // Extended output significand.
+  // Extended significands.
+  logic [SIG_WIDTH:0] extSig1;
+  logic [SIG_WIDTH:0] extSig2;
   logic [SIG_WIDTH:0] extSigOut;
   
   // Normalized fields.
@@ -74,18 +77,22 @@ module fpuAddSub
   // Right shift the smaller exponent by the difference in exponents.
   assign shiftIn1  = (fpuAddSubE1 < fpuAddSubE2);
 
+  // Attach leading one to significands.
+  assign extSig1 = {1'b1, fpuAddSubSig1};
+  assign extSig2 = {1'b1, fpuAddSubSig2};
+
   always_comb begin
     if (shiftIn1) begin
       expShift = (fpuAddSubE2 - fpuAddSubE1);
-      adjExp = fpuAddSubS2;
-      {adjSign, adjSig} = {fpuAddSubS1, fpuAddSubSig1 >> expShift};
-      {nonAdjSign, nonAdjSig} = {effS2, fpuAddSubSig2};
+      adjExp = fpuAddSubE2;
+      {adjSign, adjSig} = {effS2, extSig2};
+      {nonAdjSign, nonAdjSig} = {fpuAddSubS1, extSig1 >> expShift};
     end
     else begin
       expShift = (fpuAddSubE1 - fpuAddSubE2);
-      adjExp = fpuAddSubS1;
-      {adjSign, adjSig} = {effS2, fpuAddSubSig2 >> expShift};
-      {nonAdjSign, nonAdjSig} = {fpuAddSubS1, fpuAddSubSig2};
+      adjExp = fpuAddSubE1;
+      {adjSign, adjSig} = {fpuAddSubS1, extSig1};
+      {nonAdjSign, nonAdjSig} = {effS2, extSig2 >> expShift};
     end
   end
 
@@ -108,10 +115,10 @@ module fpuAddSub
   // Add or subtract magnitudes based on signs.
   always_comb begin
     if (largeSign == smallSign) begin
-      extSigOut = {1'b0, sigLarge} + {1'b0, sigSmall};
+      extSigOut = sigLarge + sigSmall;
     end
     else begin
-      extSigOut = {1'b0, sigLarge} - {1'b0, sigSmall};
+      extSigOut = sigLarge - sigSmall;
     end
   end
 
@@ -122,10 +129,11 @@ module fpuAddSub
 
   // Normalize all fields.
   fpuNormalizer #(.BIT_WIDTH(BIT_WIDTH), .EXP_WIDTH(EXP_WIDTH), .SIG_WIDTH(SIG_WIDTH))
-                addSubNormalizer(.op(FPU_ADD), .*);
+                addSubNormalizer(.op(FPU_ADD), .extSigOut, .adjExp, .normSig,
+                                 .normExp, .V);
 
   assign fpuAddSubOut = {largeSign, normExp, normSig[SIG_WIDTH - 1:0]};
 
-  assign addSubView = {effS2, shiftIn1, expShift, adjExp, adjSig, nonAdjSig, adjSign, nonAdjSign,
-                       sigLarge, sigSmall, extSigOut, largeSign, smallSign};
+  // assign addSubView = {effS2, shiftIn1, expShift, adjExp, adjSig, nonAdjSig, adjSign, nonAdjSign,
+  //                      sigLarge, sigSmall, extSigOut, largeSign, smallSign};
 endmodule : fpuAddSub
