@@ -8,14 +8,15 @@
 `include "lib.sv"
 
 module fpuadd_test();
+  logic         sub;
   fp16_t        fpuIn1;
   fp16_t        fpuIn2;
-  fpuOp_t       op;
+  fpuOp_t       op; // Useless if just testing ALU operations.
   fp16_t        fpuOut;
   condCode_t    condCodes;
   addSubDebug_t addSubView;
 
-  FPU16 DUT(.*);
+  fpuAddSub16 DUT(.*);
 
   task displayInfo();
     $display("fpuIn1(%b)    fpuIn2(%b)\n",
@@ -39,6 +40,7 @@ module fpuadd_test();
 
   initial begin
     $display("Testing 1 + 0...");
+    sub <= '0;
     fpuIn1 <= 16'h3C00;
     fpuIn2 <= '0;
     op <= FPU_ADD;

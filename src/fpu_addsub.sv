@@ -7,6 +7,7 @@
 `default_nettype none
 
 `include "constants.sv"
+`include "lib.sv"
 
 module fpuAddSub16
   (input  logic         sub,
@@ -24,59 +25,52 @@ module fpuAddSub16
   fp16_t largeNum;
   fp16_t smallNum;
   fpuAddSubSorter sorter(.*);
-  
+
   // Align binary points.
   fp16_t alignedSmallNum;
   fpuAddSubAligner aligner(.*);
 
   // Add significands.
-  logic [`FP16_FRACW:0] extSigSum;
+  logic [`FP16_FRACW - 1:0] fracSum;
   logic [`FP16_FRACW:0] extLargeFrac;
   logic [`FP16_FRACW:0] extSmallFrac;
 
+  // Fields to build the unnormalized input.
+  logic [1:0] intPart;
+
   assign extLargeFrac = (largeNum.exp == '0) ? {1'b0, largeNum.frac} :
                                                {1'b1, largeNum.frac};
-  assign extSmallFrac = (smallNum.exp == '0) ? {1'b0, smallNum.frac} :
-                                               {1'b1, smallNum.frac};
-  assign extSigSum = (largeNum.sign == smallNum.sign) ? 
+  assign extSmallFrac = {1'b0, alignedSmallNum.frac};
+
+  assign {intPart, fracSum} = (largeNum.sign == smallNum.sign) ?
                      (extLargeFrac + extSmallFrac) :
                      (extLargeFrac - extSmallFrac);
 
   // Normalize floating point fields.
-  fp16_t unnormalizedIn;
+  unnorm16_t unnormalizedIn;
   fp16_t normalizedOut;
 
   // Pack the fractional part along with largeNum fields to get unnormalized
   // value.
-  assign unnormalizedIn = {largeNum.sign, largeNum.exp, extSigSum[`FP16_FRACW - 1:0]};
+  assign unnormalizedIn = {largeNum.sign, intPart, largeNum.exp, fracSum};
   fpuNormalizer16 normalizer(.*);
 
   // Set condition codes.
   assign Z = (normalizedOut == '0);
-  assign C = extSigSum[`FP16_FRACW];
+  assign C = intPart[1];
   assign N = normalizedOut[15];
   assign V = (~sub & ~fpuIn1.sign & ~fpuIn2.sign & N) | (sub & fpuIn1.sign & fpuIn2.sign & ~N);
 
   assign fpuOut = normalizedOut;
 
-  assign addSubView = {
-   largeNum,
-   smallNum,
-   aligner.expDiff,
-   alignedSmallNum,
-   extSigSum,
-   unnormalizedIn,
-   normalizedOut,
-   fpuOut
-  };
+  // assign addSubView = {
+  //  largeNum,
+  //  smallNum,
+  //  aligner.expDiff,
+  //  alignedSmallNum,
+  //  extSigSum,
+  //  unnormalizedIn,
+  //  normalizedOut,
+  //  fpuOut
+  // };
 endmodule : fpuAddSub16
-
-// Sorts two inputs such that the larger magnitude number is stored in largeNum,
-// and the smaller in smallNum.
-module fpuAddSubSorter
-  (input  fp16_t fpuIn1, fpuIn2,
-   output fp16_t largeNum, smallNum);
-
-  assign {largeNum, smallNum} = ({fpuIn1.exp, fpuIn1.frac} > {fpuIn2.exp, fpuIn2.frac}) ? 
-                                {fpuIn1, fpuIn2} : {fpuIn2, fpuIn1};
-endmodule : fpuAddSubSorter

@@ -1,6 +1,6 @@
 VCS 	 := vcs -sverilog -q
 SRCDIR := ../src/
-SRC		 := $(SRCDIR)constants.sv $(SRCDIR)lib.sv
+SRC		 := $(wildcard $(SRCDIR)*.sv)
 
 .PHONY: clean
 
