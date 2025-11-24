@@ -7,70 +7,27 @@
 
 `include "constants.sv"
 
-module FPU
-  #(parameter int BIT_WIDTH = 16,
-              int EXP_WIDTH = 5,
-              int SIG_WIDTH = 10)
-  (input  logic [BIT_WIDTH - 1:0] fpuIn1, fpuIn2,
-   input  fpuOp_t                 op,
-   output logic [BIT_WIDTH - 1:0] fpuOut,
-   output logic [3:0]             condCodes,
-   output addSubDebug_t           addSubView);
+module FPU16
+  (input  fp16_t        fpuIn1, fpuIn2,
+   input  fpuOp_t       op,
+   output fp16_t        fpuOut,
+   output condCode_t    condCodes,
+   output addSubDebug_t addSubView);
 
-  localparam int EXP_HI    = BIT_WIDTH - 1;
-  localparam int EXP_LO    = EXP_HI - EXP_WIDTH;
-  localparam int SIG_HI    = EXP_LO - 1;
-  localparam int SIG_LO    = 0;
-
-  // Condition codes to set.
-  logic Z, C, N, V;
-
-  // Floating point bit parts.
-  logic fpuInS1, fpuInS2;
-  logic [EXP_WIDTH - 1:0] fpuInE1;
-  logic [EXP_WIDTH - 1:0] fpuInE2;
-  logic [SIG_WIDTH - 1:0] fpuInM1;
-  logic [SIG_WIDTH - 1:0] fpuInM2;
-
-  // Break down each input into their sign, exponent, and mantissa parts.
-  assign fpuInS1 = fpuIn1[BIT_WIDTH - 1];
-  assign fpuInS2 = fpuIn2[BIT_WIDTH - 1];
-  assign fpuInE1 = fpuIn1[EXP_HI:EXP_LO];
-  assign fpuInE2 = fpuIn2[EXP_HI:EXP_LO];
-  assign fpuInM1 = fpuIn1[SIG_HI:SIG_LO];
-  assign fpuInM2 = fpuIn2[SIG_HI:SIG_LO];
-
-  logic [BIT_WIDTH - 1:0] fpuAddOut;
-  logic [BIT_WIDTH - 1:0] fpuSubOut;
-  logic [3:0]              addCondCodes;
-  logic [3:0]              subCondCodes;
+  fp16_t fpuAddOut;
+  fp16_t fpuSubOut;
+  condCode_t addCondCodes;
+  condCode_t subCondCodes;
 
   addSubDebug_t addView;
   addSubDebug_t subView;
 
-  fpuAddSub #(.BIT_WIDTH(BIT_WIDTH), .EXP_WIDTH(EXP_WIDTH), .SIG_WIDTH(SIG_WIDTH))
-             fpuAdder (.sub(1'b0), .fpuAddSubIn1(fpuIn1), .fpuAddSubIn2(fpuIn2),
-                       .fpuAddSubS1(fpuInS1), .fpuAddSubS2(fpuInS2),
-                       .fpuAddSubE1(fpuInE1), .fpuAddSubE2(fpuInE2),
-                       .fpuAddSubSig1(fpuInM1), .fpuAddSubSig2(fpuInM2),
-                       .fpuAddSubOut(fpuAddOut), .condCodes(addCondCodes),
-                       .addSubView(addView));
-
-  fpuAddSub #(.BIT_WIDTH(BIT_WIDTH), .EXP_WIDTH(EXP_WIDTH), .SIG_WIDTH(SIG_WIDTH))
-             fpuSubtracter (.sub(1'b1), .fpuAddSubIn1(fpuIn1), .fpuAddSubIn2(fpuIn2),
-                            .fpuAddSubS1(fpuInS1), .fpuAddSubS2(fpuInS2),
-                            .fpuAddSubE1(fpuInE1), .fpuAddSubE2(fpuInE2),
-                            .fpuAddSubSig1(fpuInM1), .fpuAddSubSig2(fpuInM2),
-                            .fpuAddSubOut(fpuSubOut), .condCodes(subCondCodes),
-                            .addSubView(subView));
-
+  fpuAddSub16 fpuAdder(.sub(1'b0), .fpuIn1, .fpuIn2, .fpuOut(fpuAddOut),
+                       .condCodes(addCondCodes), .addSubView(addView));
+  fpuAddSub16 fpuSubtracter(.sub(1'b1), .fpuIn1, .fpuIn2, .fpuOut(fpuSubOut),
+                            .condCodes(subCondCodes), .addSubView(subView));
+            
   always_comb begin
-    // Unset all condition codes by default.
-    Z = 0;
-    C = 0;
-    N = 0;
-    V = 0;
-
     unique case (op)
       FPU_ADD: begin
         fpuOut = fpuAddOut;
@@ -97,4 +54,4 @@ module FPU
       end
     endcase
   end
-endmodule : FPU
+endmodule : FPU16

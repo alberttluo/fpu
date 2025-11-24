@@ -8,132 +8,82 @@
 
 `include "constants.sv"
 
-/*
-* Inputs:
-*   sub               : 1 for substraction, 0 for addition
-*   fpuAddSubIn{1,2}  : Operands
-*   fpuAddSubS{1,2}   : Sign bits for operands.
-*   fpuAddSubE{1,2}   : Exponent bits for operands
-*   fpuAddSubSig{1,2} : Explicit significands for operands
-*
-* Outputs:
-*   fpuAddSubOut : Result of the operation (either addition or subtraction).
-*   condCodes    : Condition codes (set normally).
-*
-*/
-module fpuAddSub
-  #(parameter int BIT_WIDTH = 16,
-              int EXP_WIDTH = 5,
-              int SIG_WIDTH = 10)
-  (input  logic                   sub,
-   input  logic [BIT_WIDTH - 1:0] fpuAddSubIn1, fpuAddSubIn2,
-   input  logic                   fpuAddSubS1, fpuAddSubS2,
-   input  logic [EXP_WIDTH - 1:0] fpuAddSubE1, fpuAddSubE2,
-   input  logic [SIG_WIDTH - 1:0] fpuAddSubSig1, fpuAddSubSig2,
-   output logic [BIT_WIDTH - 1:0] fpuAddSubOut,
-   output logic [3:0]             condCodes,
-   // All internal signals for debugging.
-   output addSubDebug_t           addSubView);
+module fpuAddSub16
+  (input  logic         sub,
+   input  fp16_t        fpuIn1, fpuIn2,
+   output fp16_t        fpuOut,
+   output condCode_t    condCodes,
+   // All internal signals for debugging (currently not used).
+   output addSubDebug_t addSubView);
 
   // Explicit condition codes.
   logic Z, C, N, V;
   assign condCodes = {Z, C, N, V};
 
-  // Effective sign bit for operand 2 -- turns subtractions into additions by
-  // flipping the sign bit.
-  logic effS2;
-  assign effS2 = fpuAddSubS2 ^ sub;
-
-  // 1 if E1 < E2, 0 otherwise.
-  logic shiftIn1;
-
-  // Amount by which to right shift to align points.
-  logic [$clog2(EXP_WIDTH) - 1:0] expShift;
-  logic [EXP_WIDTH - 1:0] adjExp;
-
-  // Adjusted and non-adjusted significands/signs.
-  // Note that adjusted means the one that we are not "adjusting".
-  logic [SIG_WIDTH:0] adjSig;
-  logic [SIG_WIDTH:0] nonAdjSig;
-  logic adjSign;
-  logic nonAdjSign;
-
-  // Final opearands after adjustments, split by magnitude.
-  logic [SIG_WIDTH:0] sigLarge;
-  logic [SIG_WIDTH:0] sigSmall;
-
-  // Extended significands.
-  logic [SIG_WIDTH:0] extSig1;
-  logic [SIG_WIDTH:0] extSig2;
-  logic [SIG_WIDTH:0] extSigOut;
+  // Sort the numbers so that the larger magnitude number is on top.
+  fp16_t largeNum;
+  fp16_t smallNum;
+  fpuAddSubSorter sorter(.*);
   
-  // Normalized fields.
-  logic [SIG_WIDTH:0] normSig;
-  logic [EXP_WIDTH - 1:0] normExp;
+  // Align binary points.
+  fp16_t alignedSmallNum;
+  fpuAddSubAligner aligner(.*);
 
-  // Signs of large and small operands.
-  logic largeSign, smallSign;
+  // Add significands.
+  logic [`FP16_FRACW:0] extSigSum;
+  assign extSigSum = (largeNum.sign == smallNum.sign) ? 
+                     ({1'b0, largeNum.frac} + {1'b0, alignedSmallNum.frac}) :
+                     ({1'b0, largeNum.frac} - {1'b0, alignedSmallNum.frac});
 
-  // Right shift the smaller exponent by the difference in exponents.
-  assign shiftIn1  = (fpuAddSubE1 < fpuAddSubE2);
+  // Normalize floating point fields.
+  fp16_t unnormalizedIn;
+  fp16_t normalizedOut;
 
-  // Attach leading one to significands.
-  assign extSig1 = {1'b1, fpuAddSubSig1};
-  assign extSig2 = {1'b1, fpuAddSubSig2};
+  // Pack the fractional part along with largeNum fields to get unnormalized
+  // value.
+  assign unnormalizedIn = {largeNum.sign, largeNum.exp, extSigSum[`FP16_FRACW - 1:0]};
+  fpuNormalizer16 normalizer(.*);
+
+  // Set condition codes.
+  assign Z = (normalizedOut == '0);
+  assign C = extSigSum[`FP16_FRACW];
+  assign N = normalizedOut[15];
+  assign V = (~sub & ~fpuIn1.sign & ~fpuIn2.sign & N) | (sub & fpuIn1.sign & fpuIn2.sign & ~N);
+
+  assign fpuOut = normalizedOut;
+
+  assign addSubView = {
+     largeNum,
+     smallNum,
+     alignedSmallNum,
+     extSigSum,
+     unnormalizedIn,
+     normalizedOut,
+     fpuOut
+  };
+endmodule : fpuAddSub16
+
+// Sorts two inputs such that the larger magnitude number is stored in largeNum,
+// and the smaller in smallNum.
+module fpuAddSubSorter
+  (input  fp16_t fpuIn1, fpuIn2,
+   output fp16_t largeNum, smallNum);
+
+  assign {largeNum, smallNum} = ({fpuIn1.exp, fpuIn1.frac} > {fpuIn2.exp, fpuIn2.frac}) ? 
+                                {fpuIn1, fpuIn2} : {fpuIn2, fpuIn1};
+endmodule : fpuAddSubSorter
+
+// Aligns binary points of large and small number.
+module fpuAddSubAligner
+  (input  fp16_t largeNum, smallNum,
+   output fp16_t alignedSmallNum);
+
+  logic [`FP16_EXPW - 1:0] expDiff;
 
   always_comb begin
-    if (shiftIn1) begin
-      expShift = (fpuAddSubE2 - fpuAddSubE1);
-      adjExp = fpuAddSubE2;
-      {adjSign, adjSig} = {effS2, extSig2};
-      {nonAdjSign, nonAdjSig} = {fpuAddSubS1, extSig1 >> expShift};
-    end
-    else begin
-      expShift = (fpuAddSubE1 - fpuAddSubE2);
-      adjExp = fpuAddSubE1;
-      {adjSign, adjSig} = {fpuAddSubS1, extSig1};
-      {nonAdjSign, nonAdjSig} = {effS2, extSig2 >> expShift};
-    end
+    expDiff = largeNum.exp - smallNum.exp;
+    alignedSmallNum.sign = smallNum.sign;
+    alignedSmallNum.exp = largeNum.exp; 
+    alignedSmallNum.frac = smallNum.frac >> expDiff;
   end
-
-  // Assign large/small operands based on magnitude.
-  always_comb begin
-    if (adjSig > nonAdjSig) begin
-      sigLarge = adjSig;
-      largeSign = adjSign;
-      sigSmall = nonAdjSig;
-      smallSign = nonAdjSign;
-    end
-    else begin
-      sigLarge = nonAdjSig;
-      largeSign = nonAdjSign;
-      sigSmall = adjSig;
-      smallSign = adjSign;
-    end
-  end
-
-  // Add or subtract magnitudes based on signs.
-  always_comb begin
-    if (largeSign == smallSign) begin
-      extSigOut = sigLarge + sigSmall;
-    end
-    else begin
-      extSigOut = sigLarge - sigSmall;
-    end
-  end
-
-  // Set condition codes. Overflow flag is set by normalizer.
-  assign C = extSigOut[SIG_WIDTH];
-  assign Z = (extSigOut == '0);
-  assign N = largeSign;
-
-  // Normalize all fields.
-  fpuNormalizer #(.BIT_WIDTH(BIT_WIDTH), .EXP_WIDTH(EXP_WIDTH), .SIG_WIDTH(SIG_WIDTH))
-                addSubNormalizer(.op(FPU_ADD), .extSigOut, .adjExp, .normSig,
-                                 .normExp, .V);
-
-  assign fpuAddSubOut = {largeSign, normExp, normSig[SIG_WIDTH - 1:0]};
-
-  // assign addSubView = {effS2, shiftIn1, expShift, adjExp, adjSig, nonAdjSig, adjSign, nonAdjSign,
-  //                      sigLarge, sigSmall, extSigOut, largeSign, smallSign};
-endmodule : fpuAddSub
+endmodule : fpuAddSubAligner

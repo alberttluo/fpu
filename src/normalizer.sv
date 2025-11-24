@@ -5,58 +5,40 @@
 * Author: Albert Luo (albertlu at cmu dot edu)
 */
 
-module fpuNormalizer
-  #(parameter int BIT_WIDTH = 16,
-              int EXP_WIDTH = 5,
-              int SIG_WIDTH = 10)
-  (input  fpuOp_t op,
-   input  logic [SIG_WIDTH:0]     extSigOut,
-   input  logic [EXP_WIDTH - 1:0] adjExp,
-   output logic [SIG_WIDTH:0]     normSig,
-   output logic [EXP_WIDTH - 1:0] normExp,
-   output logic                   V);
+module fpuNormalizer16
+  (input  logic C,
+   input  fp16_t unnormalizedIn,
+   output fp16_t normalizedOut);
 
-  // Number of leading zeros (if normSig < 1).
-  logic [$clog2(SIG_WIDTH + 1) - 1:0] lzc;
-
-  // Top bit of the adjusted exponent -- used for overflow calculation.
-  logic expTop;
-  assign expTop = adjExp[EXP_WIDTH - 1];
-
+  // Leading zeros count (not including carry out).
+  logic [$clog2(`FP16_FRACW + 1) - 1:0] lzc;
+  
   always_comb begin
-    normSig = extSigOut;
-    normExp = adjExp;
-
-    // sigOut = 0 case (output is 0).
-    if (extSigOut == '0) begin
-      normSig = '0;
-      normExp = '0;
-    end
-    // sigOut >= 2 case.
-    else if (extSigOut[SIG_WIDTH]) begin
-      normSig = normSig >> 1;
-      normExp = normExp + 1;
-    end
-    // 0 < normSig <= 2, but possibly < 1.
-    else begin
-      // TODO: lzc for arbitrary bit width.
-      if (normSig[SIG_WIDTH - 1]) lzc = 0;
-      else if (normSig[SIG_WIDTH - 2]) lzc = 1;
-      else if (normSig[SIG_WIDTH - 3]) lzc = 2;
-      else if (normSig[SIG_WIDTH - 4]) lzc = 3;
-      else if (normSig[SIG_WIDTH - 5]) lzc = 4;
-      else if (normSig[SIG_WIDTH - 6]) lzc = 5;
-      else if (normSig[SIG_WIDTH - 7]) lzc = 6;
-      else if (normSig[SIG_WIDTH - 8]) lzc = 7;
-      else if (normSig[SIG_WIDTH - 9]) lzc = 8;
-      else lzc = 9;
-
-      normSig = normSig << lzc;
-
-      // Could cause overflow.
-      normExp = normExp - lzc;
-    end
+    if (unnormalizedIn.frac[`FP16_FRACW - 1:0]) lzc = 0;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 2:0]) lzc = 1;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 3:0]) lzc = 2;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 4:0]) lzc = 3;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 5:0]) lzc = 4;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 6:0]) lzc = 5;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 7:0]) lzc = 6;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 8:0]) lzc = 7;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 9:0]) lzc = 8;
+    else lzc = 9;
   end
 
-  assign V = (expTop ^ normExp[EXP_WIDTH - 1]);
-endmodule : fpuNormalizer
+  always_comb begin
+    normalizedOut.sign = unnormalizedIn.sign;
+    if (C) begin
+      normalizedOut.frac = unnormalizedIn.frac >> 1;
+      normalizedOut.exp = unnormalizedIn.exp + 1;
+    end
+    else if (lzc <= unnormalizedIn.exp) begin
+      normalizedOut.frac = unnormalizedIn.frac << lzc;
+      normalizedOut.exp = unnormalizedIn.exp - lzc;
+    end
+    else begin
+      normalizedOut.exp = '0;
+      normalizedOut.frac = '0;
+    end
+  end
+endmodule : fpuNormalizer16
