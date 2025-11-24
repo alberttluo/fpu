@@ -24,4 +24,4 @@ DVEfiles
 .synopsys_dve_rebuild.tcl
 .restartSimSession.tcl.old
 session.inter.vpd.tcl
-
+*_test

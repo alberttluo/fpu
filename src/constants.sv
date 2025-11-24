@@ -15,8 +15,8 @@
 `define FP16_FRACW 10
 
 // Bit widths for FP32 (single-precision).
-`define FP32_EXPW  8 
-`define FP32_FRACW 23 
+`define FP32_EXPW  8
+`define FP32_FRACW 23
 
 // Bit widths for FP64 (double-precision).
 `define FP64_EXPW  11
@@ -53,6 +53,13 @@ typedef enum logic[$clog2(`NUM_OPS) - 1:0] {
   FPU_UNDEF1,
   FPU_UNDEF2
 } fpuOp_t;
+
+typedef struct packed {
+  logic sign;
+  logic [1:0] leadingInt;
+  logic [`FP16_EXPW - 1:0] exp;
+  logic [`FP16_FRACW - 1:0] frac;
+} unnorm16_t;
 
 typedef struct packed {
   logic Z, C, N, V;
