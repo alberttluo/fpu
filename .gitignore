@@ -1,6 +1,27 @@
 *.key
 *.daidir
 *.out
+*.exe
+*.app
 *.sh
 csrc
+DVEfiles
+*.vpd
+*.d
+*.lo
+*.slo
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.lai
+*.la
+*.a
+*.lib
+*.swp
+*.bak
+.synopsys_dve_rebuild.tcl
+.restartSimSession.tcl.old
+session.inter.vpd.tcl
 
