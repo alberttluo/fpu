@@ -1,6 +1,8 @@
 /*
 * multiplier.sv: Sequential, unsigned multiplier for multiplying mantissas. Process is started by
-* asserting the start signal. The result is ready when the done signal is asserted.
+* asserting the start signal (for one clock cycle). The result is ready when the done signal is asserted.
+* To start computation with new inputs, reset must first be asserted, then the
+* same start process.
 *
 * Author: Albert Luo (albertlu at cmu dot edu)
 */
@@ -27,31 +29,31 @@ module fpuMultiplier16
   // All components share one enable signal.
   logic compEn;
 
-  // Shift register for mulIn2.
+  // TODO: Optimize logic so that smaller input on bottom.
+  logic compDone;
+  logic [`FP16_FRACW - 1:0] shift;
+  logic [2 * `FP16_FRACW - 1:0] adderOut;
+  logic [2 * `FP16_FRACW - 1:0] adderIn;
+  logic [`FP16_FRACW - 1:0] latchedIn1;
   logic [`FP16_FRACW - 1:0] storedIn2;
+
+  // Shift register for mulIn2.
   always_ff @(posedge clock) begin
     if (start) begin
       storedIn2 <= mulIn2;
     end
     else if (compEn) begin
-      storedIn2 <= storedIn2 >> '1;
+      storedIn2 <= storedIn2 >> 1;
     end
   end
 
-  // TODO: Optimize logic so that smaller input on bottom.
-  logic opZero;
-  assign opZero = (storedIn2 == '0);
-
-  logic [`FP16_FRACW - 1:0] shift;
-  logic [2 * `FP16_FRACW - 1:0] adderOut;
-  logic [2 * `FP16_FRACW - 1:0] adderIn;
+  assign compDone = (shift == 9'd9);
 
   // Registers to latch input value, in case they change during computation.
-  logic [`FP16_FRACW - 1:0] latchedIn1;
   Register #(.WIDTH(`FP16_FRACW)) inReg1(.en(start), .clear('0), .clock,
                                          .D(mulIn1), .Q(latchedIn1));
   // Register for output value.
-  Register #(.WIDTH(2 * `FP16_FRACW)) outReg(.en(compEn), .clear(reset), .clock,
+  Register #(.WIDTH(2 * `FP16_FRACW)) outReg(.en(compEn), .clear(reset | start), .clock,
                                              .D(adderOut), .Q(mulOut));
 
   // Counter for shift amount.
@@ -59,15 +61,15 @@ module fpuMultiplier16
                                               .up('1), .clock, .D('0), .Q(shift));
 
   // Adder to calculate intermediate sums.
-  assign adderIn = (mulIn2[0]) ? ({`FP16_FRACW'd0, mulIn1} << shift) : '0;
+  assign adderIn = (storedIn2[0]) ? ({`FP16_FRACW'd0, latchedIn1} << shift) : '0;
   Adder #(.WIDTH(2 * `FP16_FRACW)) adder(.cin('0), .A(mulOut), .B(adderIn),
-                                         .cout('0), .sum(adderOut));
+                                         .cout(), .sum(adderOut));
 
   fpuMultiplierFSM FSM(.*);
 endmodule : fpuMultiplier16
 
 module fpuMultiplierFSM
-  (input  logic clock, reset, opZero, start,
+  (input  logic clock, reset, compDone, start,
    output logic compEn,
    output logic done);
 
@@ -89,7 +91,7 @@ module fpuMultiplierFSM
       WAIT: nextState = (start) ? COMP : WAIT;
 
       COMP: begin
-        nextState = (opZero) ? DONE : COMP;
+        nextState = (compDone) ? DONE : COMP;
         compEn = 1;
       end
 

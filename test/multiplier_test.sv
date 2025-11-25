@@ -15,6 +15,29 @@ module multiplier_test();
  logic [2 * `FP16_FRACW - 1:0] mulOut;
  logic done;
 
+ fpuMultiplier16 DUT(.*);
+
+ task automatic doMultiply
+   (input logic [`FP16_FRACW - 1:0] in1,
+    input logic [`FP16_FRACW - 1:0] in2);
+   reset <= 0;
+   #1;
+   reset <= 1;
+   #1;
+   reset <= 0;
+
+   mulIn1 <= in1;
+   mulIn2 <= in2;
+   start <= 1;
+   @(posedge clock);
+   start <= 0;
+
+   while (~done) @(posedge clock);
+
+   $display("Result of %d * %d = %d\n",
+            in1, in2, mulOut);
+ endtask
+
  initial begin
    reset = 0;
    reset <= 1;
@@ -23,14 +46,23 @@ module multiplier_test();
  end
 
  initial begin
-   mulIn1 <= 10'd3;
-   mulIn2 <= 10'd4;
-   start <= 1;
+  // $monitor("mulIn1 = %b, mulIn2 = %b, mulOut = %b\n",
+  //          mulIn1, mulIn2, mulOut,
+  //          "storedIn2 = %b\n",
+  //          DUT.storedIn2,
+  //          "start = %b, reset = %b, done = %b\n",
+  //          start, reset, done,
+  //          "compEn = %b, compDone = %b\n",
+  //          DUT.compEn, DUT.compDone,
+  //          "currState = %s, nextState = %s\n",
+  //          DUT.FSM.currState.name, DUT.FSM.nextState.name,
+  //          "===============================================\n");
 
-   #6000000;
-
+   doMultiply(10'd3, 10'd4);
+   doMultiply(10'd19, 10'd47);
+   doMultiply(10'd1, 10'd4);
+   doMultiply(10'd0, 10'd47);
+   doMultiply(10'd999, 10'd35);
    $finish;
  end
-
- fpuMultiplier16 DUT(.*);
 endmodule : multiplier_test
