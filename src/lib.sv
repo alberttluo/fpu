@@ -14,15 +14,20 @@
 * point inputs.
 */
 module fpuAddSubAligner
-  (input  fp16_t largeNum, smallNum,
+  (input  logic  sub,
+   input  fp16_t largeNum, smallNum,
    output fp16_t alignedSmallNum);
 
   logic [`FP16_EXPW - 1:0] expDiff;
   logic [`FP16_FRACW:0] extFrac;
+  logic [`FP16_FRACW:0] extFracNeg;
 
   always_comb begin
     expDiff = largeNum.exp - smallNum.exp;
+
+    // Effective sign -- flip if subtraction so we can always add.
     alignedSmallNum.sign = smallNum.sign;
+
     alignedSmallNum.exp = largeNum.exp;
     // Denormalized values have leading 0 instead of leading 1.
     extFrac = {smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac} >> expDiff;

@@ -1,5 +1,5 @@
 /*
-* fpuadd_test.sv: A basic test bench for adding and subtracting.
+* fpuaddsub_test.sv: A basic test bench for adding and subtracting.
 *
 * Author: Albert Luo (albertlu at cmu dot edu)
 */
@@ -7,7 +7,7 @@
 `include "constants.sv"
 `include "lib.sv"
 
-module fpuadd_test();
+module fpuaddsub_test();
   logic         sub;
   fp16_t        fpuIn1;
   fp16_t        fpuIn2;
@@ -68,6 +68,44 @@ module fpuadd_test();
     #10;
     displayInfo();
 
+    $display("Testing 444 + 783...");
+    fpuIn1 <= 16'h5EF0;
+    fpuIn2 <= 16'h621E;
+    op <= FPU_ADD;
+    #10;
+    displayInfo();
+
+    $display("Testing 1 - 1...");
+    fpuIn1 <= 16'h3C00;
+    fpuIn2 <= 16'h3C00;
+    sub <= '1;
+    op <= FPU_SUB;
+    #10;
+    displayInfo();
+
+    $display("Testing 1 - 2...");
+    fpuIn1 <= 16'h3C00;
+    fpuIn2 <= 16'h4000;
+    sub <= '1;
+    op <= FPU_SUB;
+    #10;
+    displayInfo();
+
+    $display("Testing 10 - 3...");
+    fpuIn1 <= 16'h4900;
+    fpuIn2 <= 16'h4200;
+    sub <= '1;
+    op <= FPU_SUB;
+    #10;
+    displayInfo();
+
+    $display("Testing 398 - 52...");
+    fpuIn1 <= 16'h5E38;
+    fpuIn2 <= 16'h5280;
+    sub <= '1;
+    op <= FPU_SUB;
+    #10;
+    displayInfo();
     $finish;
   end
-endmodule : fpuadd_test
+endmodule : fpuaddsub_test

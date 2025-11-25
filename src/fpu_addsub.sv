@@ -21,10 +21,30 @@ module fpuAddSub16
   logic Z, C, N, V;
   assign condCodes = {Z, C, N, V};
 
+  // Effective sign for fpuIn2 if subtraction.
+  logic effS1;
+  logic effS2;
+  assign effS1 = fpuIn1.sign;
+  assign effS2 = fpuIn2.sign ^ sub;
+
   // Sort the numbers so that the larger magnitude number is on top.
   fp16_t largeNum;
   fp16_t smallNum;
   fpuAddSubSorter sorter(.*);
+
+  // Effective signs after sorting.
+  logic effSignLarge, effSignSmall;
+  always_comb begin
+    if (largeNum == fpuIn1) begin
+      effSignLarge = effS1;
+      effSignSmall = effS2;
+    end
+
+    else begin
+      effSignLarge = effS2;
+      effSignSmall = effS1;
+    end
+  end
 
   // Align binary points.
   fp16_t alignedSmallNum;
@@ -42,9 +62,9 @@ module fpuAddSub16
                                                {1'b1, largeNum.frac};
   assign extSmallFrac = {1'b0, alignedSmallNum.frac};
 
-  assign {intPart, fracSum} = (largeNum.sign == smallNum.sign) ?
-                     (extLargeFrac + extSmallFrac) :
-                     (extLargeFrac - extSmallFrac);
+  assign {intPart, fracSum} = (effSignLarge == effSignSmall) ?
+                              (extLargeFrac + extSmallFrac) :
+                              (extLargeFrac - extSmallFrac);
 
   // Normalize floating point fields.
   unnorm16_t unnormalizedIn;
@@ -52,13 +72,13 @@ module fpuAddSub16
 
   // Pack the fractional part along with largeNum fields to get unnormalized
   // value.
-  assign unnormalizedIn = {largeNum.sign, intPart, largeNum.exp, fracSum};
+  assign unnormalizedIn = {effSignLarge, intPart, largeNum.exp, fracSum};
   fpuNormalizer16 normalizer(.*);
 
   // Set condition codes.
   assign Z = (normalizedOut == '0);
   assign C = intPart[1];
-  assign N = normalizedOut[15];
+  assign N = normalizedOut.sign;
   assign V = (~sub & ~fpuIn1.sign & ~fpuIn2.sign & N) | (sub & fpuIn1.sign & fpuIn2.sign & ~N);
 
   assign fpuOut = normalizedOut;
