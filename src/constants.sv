@@ -8,7 +8,7 @@
 `ifndef sv_CONSTANTS
 `define sv_CONSTANTS
 
-`define NUM_OPS    6
+`define NUM_OPS    4
 
 // Bit widths for FP16 (half-precision).
 `define FP16_EXPW  5
@@ -47,11 +47,7 @@ typedef enum logic[$clog2(`NUM_OPS) - 1:0] {
   FPU_ADD,
   FPU_SUB,
   FPU_MUL,
-  FPU_DIV,
-  FPU_SHL,
-  FPU_SHR,
-  FPU_UNDEF1,
-  FPU_UNDEF2
+  FPU_DIV
 } fpuOp_t;
 
 typedef struct packed {
