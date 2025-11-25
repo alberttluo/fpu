@@ -51,15 +51,16 @@ module fpuNormalizer16
   logic [$clog2(`FP16_FRACW + 1) - 1:0] lzc;
 
   always_comb begin
-    if (unnormalizedIn.frac[`FP16_FRACW - 1]) lzc = 1;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 2]) lzc = 2;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 3]) lzc = 3;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 4]) lzc = 4;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 5]) lzc = 5;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 6]) lzc = 6;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 7]) lzc = 7;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 8]) lzc = 8;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 9]) lzc = 9;
+    if (unnormalizedIn.frac[`FP16_FRACW - 1]) lzc = 0;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 2]) lzc = 1;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 3]) lzc = 2;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 4]) lzc = 3;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 5]) lzc = 4;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 6]) lzc = 5;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 7]) lzc = 6;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 8]) lzc = 7;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 9]) lzc = 8;
+    else if (unnormalizedIn.frac[`FP16_FRACW - 10]) lzc = 9;
     else lzc = 10;
   end
 
@@ -72,12 +73,13 @@ module fpuNormalizer16
 
     else if (unnormalizedIn.leadingInt == 0) begin
       // TODO: Deal with overflow case.
-      if (lzc < `FP16_EXPW) begin
+      if (lzc <= unnormalizedIn.exp) begin
         normalizedOut.exp = unnormalizedIn.exp - lzc;
         normalizedOut.frac = unnormalizedIn.frac << lzc;
       end
 
       else begin
+        normalizedOut.sign = '0;
         normalizedOut.exp = '0;
         normalizedOut.frac = '0;
       end

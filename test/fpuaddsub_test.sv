@@ -106,6 +106,39 @@ module fpuaddsub_test();
     op <= FPU_SUB;
     #10;
     displayInfo();
+
+    $display("Testing -1 + 1...");
+    fpuIn1 <= 16'hBC00;
+    fpuIn2 <= 16'h3C00;
+    sub <= '0;
+    op <= FPU_ADD;
+    #10;
+    displayInfo();
+
+    $display("Testing -1 + 5...");
+    fpuIn1 <= 16'hBC00;
+    fpuIn2 <= 16'h4500;
+    sub <= '0;
+    op <= FPU_ADD;
+    #10;
+    displayInfo();
+
+    // Tests that cause rounding issues.
+    $display("Testing -444 + 8972...");
+    fpuIn1 <= 16'hDEF0;
+    fpuIn2 <= 16'h7062;
+    sub <= '0;
+    op <= FPU_ADD;
+    #10;
+    displayInfo();
+
+    $display("Testing -3210 + 5019...");
+    fpuIn1 <= 16'hEA45;
+    fpuIn2 <= 16'h6CE7;
+    sub <= '0;
+    op <= FPU_ADD;
+    #10;
+    displayInfo();
     $finish;
   end
 endmodule : fpuaddsub_test

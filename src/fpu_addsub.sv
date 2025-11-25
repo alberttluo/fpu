@@ -72,7 +72,10 @@ module fpuAddSub16
 
   // Pack the fractional part along with largeNum fields to get unnormalized
   // value.
-  assign unnormalizedIn = {effSignLarge, intPart, largeNum.exp, fracSum};
+  assign unnormalizedIn.leadingInt = intPart;
+  assign unnormalizedIn.exp = largeNum.exp;
+  assign unnormalizedIn.frac = fracSum;
+  assign unnormalizedIn.sign = effSignLarge;
   fpuNormalizer16 normalizer(.*);
 
   // Set condition codes.
