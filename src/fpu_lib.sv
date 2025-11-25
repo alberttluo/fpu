@@ -4,8 +4,8 @@
 * Author: Albert Luo (albertlu at cmu dot edu)
 */
 
-`ifndef sv_LIB
-`define sv_LIB
+`ifndef sv_FPULIB
+`define sv_FPULIB
 
 `include "constants.sv"
 
@@ -98,7 +98,7 @@ module fpuAddSubSorter
   (input  fp16_t fpuIn1, fpuIn2,
    output fp16_t largeNum, smallNum);
 
-  assign {largeNum, smallNum} = ({fpuIn1.exp, fpuIn1.frac} > {fpuIn2.exp, fpuIn2.frac}) ? 
+  assign {largeNum, smallNum} = ({fpuIn1.exp, fpuIn1.frac} > {fpuIn2.exp, fpuIn2.frac}) ?
                                 {fpuIn1, fpuIn2} : {fpuIn2, fpuIn1};
 endmodule : fpuAddSubSorter
 `endif

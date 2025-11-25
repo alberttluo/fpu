@@ -1,5 +1,5 @@
 `include "constants.sv"
-`include "lib.sv"
+`include "fpu_lib.sv"
 
 module normalizer_test();
   unnorm16_t unnormalizedIn;

@@ -5,7 +5,7 @@
 */
 
 `include "constants.sv"
-`include "lib.sv"
+`include "fpu_lib.sv"
 
 module aligner_test();
   fp16_t largeNum;

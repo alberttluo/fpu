@@ -7,7 +7,7 @@
 `default_nettype none
 
 `include "constants.sv"
-`include "lib.sv"
+`include "fpu_lib.sv"
 
 module fpuAddSub16
   (input  logic         sub,
