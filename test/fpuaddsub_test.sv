@@ -5,7 +5,7 @@
 */
 
 `include "constants.sv"
-`include "lib.sv"
+`include "fpu_lib.sv"
 
 module fpuaddsub_test();
   logic         sub;
@@ -26,8 +26,8 @@ module fpuaddsub_test();
              fpuIn2.sign, fpuIn2.exp, fpuIn2.frac,
              "fpuOP(%s)\n",
              op.name,
-             "fpuOut(%b)\n",
-             fpuOut,
+             "fpuOut(%b) (%h)\n",
+             fpuOut, fpuOut,
              "ZCNV(%b)\n",
              condCodes,
              "largeNum(%b) smallNum(%b) alignedSmallNum(%b)\n",

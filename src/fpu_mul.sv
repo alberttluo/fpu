@@ -1,0 +1,98 @@
+/*
+* fpu_mul.sv: A floating point multiplication coprocessor.
+*
+* Author: Albert Luo (albertlu at cmu dot edu)
+*/
+
+`include "constants.sv"
+`include "multiplier.sv"
+`include "library.sv"
+`include "fpu_lib.sv"
+
+typedef enum logic [1:0] {
+  MUL_WAIT,
+  MUL_SIGCOMP,
+  MUL_DONE
+} fpuMulState_t;
+
+module fpuMul16
+  (input  fp16_t     fpuIn1, fpuIn2,
+   input  logic      clock, reset, start,
+   output fp16_t     fpuOut,
+   output logic      done,
+   output condCode_t condCodes);
+
+  // Significand multiplication signals.
+  logic [1:0] sigMulOutInt;
+  logic [2 * `FP16_FRACW - 1:0] sigMulOutFrac;
+  logic sigMulDone;
+  logic [`FP16_FRACW:0] sigMulIn1;
+  logic [`FP16_FRACW:0] sigMulIn2;
+
+  // Output sign determined solely by input signs.
+  logic outSign;
+
+  // Normalization fields.
+  logic [`FP16_EXPW - 1:0] unnormExp;
+  mulUnnorm16_t mulUnnormIn;
+  fp16_t mulNormOut;
+
+  // Explicit condition codes.
+  logic Z, C, N, V;
+  assign condCodes = {Z, C, N, V};
+
+  assign outSign = fpuIn1.sign ^ fpuIn2.sign;
+  // TODO: May overflow.
+  assign unnormExp = fpuIn1.exp + fpuIn2.exp;
+
+  // Prepend implicit 1 or 0 based on exponent.
+  assign sigMulIn1 = (fpuIn1.exp == '0) ? {1'b0, fpuIn1.frac} : {1'b1, fpuIn1.frac};
+  assign sigMulIn2 = (fpuIn2.exp == '0) ? {1'b0, fpuIn2.frac} : {1'b1, fpuIn2.frac};
+
+  // Sequential multiplier to multiply significands.
+  fpuMultiplier16 sigMultiplier(.mulIn1(sigMulIn1), .mulIn2(sigMulIn2), .start,
+                                .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}), 
+                                .done(sigMulDone));
+
+  assign mulUnnormIn = {outSign, sigMulOutInt, unnormExp, sigMulOutFrac};
+
+  fpuNormalizer16 mulNormalizer(.addUnnormIn('0), .mulUnnormIn,
+                                .addNormOut(), .mulNormOut(fpuOut));
+
+  // TODO: Fix C and V.
+  assign Z = (fpuOut == '0);
+  assign C = mulUnnormIn.leadingInt[1];
+  assign N = fpuOut.sign;
+  assign V = 1'b0;
+  fpuMulFSM FSM(.*);
+endmodule : fpuMul16
+
+module fpuMulFSM
+  (input  logic start, sigMulDone,
+   input  logic clock, reset,
+   output logic done);
+
+  fpuMulState_t currState, nextState;
+
+  always_ff @(posedge clock, posedge reset) begin
+    if (reset) begin
+      currState <= MUL_WAIT;
+    end
+    
+    else begin
+      currState <= nextState;
+    end
+  end
+
+  always_comb begin
+    unique case (currState)
+      MUL_WAIT: nextState = (start) ? MUL_SIGCOMP : MUL_WAIT;
+
+      MUL_SIGCOMP: nextState = (sigMulDone) ? MUL_DONE : MUL_SIGCOMP;
+
+      MUL_DONE: nextState = MUL_DONE;
+    endcase
+  end
+
+  assign done = (currState == MUL_DONE);
+endmodule : fpuMulFSM
