@@ -14,13 +14,14 @@
 * point inputs.
 */
 module fpuAddSubAligner
-  (input  logic  sub,
-   input  fp16_t largeNum, smallNum,
-   output fp16_t alignedSmallNum);
+  (input  fp16_t largeNum, smallNum,
+   output fp16_t alignedSmallNum,
+   output logic  sticky);
 
   logic [`FP16_EXPW - 1:0] expDiff;
-  logic [`FP16_FRACW:0] extFrac;
-  logic [`FP16_FRACW:0] extFracNeg;
+  // Extra five bits here for the leading integer (could be 2 if rounding) and
+  // sticky bit calculations.
+  logic [`FP16_FRACW + 4:0] extFrac;
 
   always_comb begin
     expDiff = largeNum.exp - smallNum.exp;
@@ -28,14 +29,18 @@ module fpuAddSubAligner
     // Effective sign -- flip if subtraction so we can always add.
     alignedSmallNum.sign = smallNum.sign;
 
-    alignedSmallNum.exp = largeNum.exp;
     // Denormalized values have leading 0 instead of leading 1.
     extFrac = {smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac} >> expDiff;
+
+    // TODO: Deal with NaNs.
+    alignedSmallNum.exp = largeNum.exp;
+    alignedSmallNum.frac = extFrac[`FP16_FRACW + 2:3];
+
+    // TODO: Make this actually sticky, currently is just the last third bit
+    // that gets shifted out.
+    sticky = extFrac[0];
   end
-
-  assign alignedSmallNum.frac = extFrac[`FP16_FRACW - 1:0];
 endmodule : fpuAddSubAligner
-
 
 /*
 * Normalizes floating point values based on precision type and

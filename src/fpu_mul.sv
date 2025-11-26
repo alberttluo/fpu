@@ -32,6 +32,9 @@ module fpuMul16
   // Output sign determined solely by input signs.
   logic outSign;
 
+  // Sticky bit for rounding.
+  logic sticky;
+
   // Normalization fields.
   logic [`FP16_EXPW - 1:0] unnormExp;
   unnorm16_t unnormalizedIn;

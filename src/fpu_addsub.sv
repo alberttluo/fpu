@@ -19,6 +19,9 @@ module fpuAddSub16
   logic Z, C, N, V;
   assign condCodes = {Z, C, N, V};
 
+  // Sticky bit for rounding.
+  logic sticky;
+
   // Effective sign for fpuIn2 if subtraction.
   logic effS1;
   logic effS2;
