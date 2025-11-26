@@ -59,7 +59,9 @@ module fpuMul16
   assign unnormalizedIn = {outSign, sigMulOutInt, unnormExp,
                            sigMulOutFrac[2 * `FP16_FRACW - 1:`FP16_FRACW]};
 
-  fpuNormalizer16 mulNormalizer(.unnormalizedIn, .normalizedOut(fpuOut));
+  assign sticky = sigMulOutFrac[`FP16_FRACW - 1:0] != '0;
+
+  fpuNormalizer16 mulNormalizer(.unnormalizedIn, .sticky, .normalizedOut(fpuOut));
 
   // TODO: Fix C and V.
   assign Z = (fpuOut == '0);
