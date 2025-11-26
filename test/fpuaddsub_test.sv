@@ -14,7 +14,6 @@ module fpuaddsub_test();
   fpuOp_t       op; // Useless if just testing ALU operations.
   fp16_t        fpuOut;
   condCode_t    condCodes;
-  addSubDebug_t addSubView;
 
   fpuAddSub16 DUT(.*);
 
@@ -30,10 +29,6 @@ module fpuaddsub_test();
              fpuOut, fpuOut,
              "ZCNV(%b)\n",
              condCodes,
-             "largeNum(%b) smallNum(%b) alignedSmallNum(%b)\n",
-             addSubView.largeNum, addSubView.smallNum, addSubView.alignedSmallNum,
-             "expDiff(%d)\n",
-             addSubView.expDiff,
              "=====================================================\n");
     #10;
   endtask

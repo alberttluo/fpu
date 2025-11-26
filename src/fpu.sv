@@ -15,7 +15,7 @@ module FPU16
    input  logic         clock, reset,
    output fp16_t        fpuOut,
    output condCode_t    condCodes,
-   output addSubDebug_t addSubView);
+   output fpuComp_t     comps);
 
   // Operation outputs.
   fp16_t fpuAddOut;
@@ -29,14 +29,16 @@ module FPU16
   condCode_t mulCondCodes;
   condCode_t divCondCodes;
 
-  // Debug views -- currently unused.
-  addSubDebug_t addView;
-  addSubDebug_t subView;
+  // Comparison/inequality signals.
+  logic lt, eq, gt;
+  assign comps = {lt, eq, gt};
+
+  fpuComp16 fpuComp(.*);
 
   fpuAddSub16 fpuAdder(.sub(1'b0), .fpuIn1, .fpuIn2, .fpuOut(fpuAddOut),
-                       .condCodes(addCondCodes), .addSubView(addView));
+                       .condCodes(addCondCodes));
   fpuAddSub16 fpuSubtracter(.sub(1'b1), .fpuIn1, .fpuIn2, .fpuOut(fpuSubOut),
-                            .condCodes(subCondCodes), .addSubView(subView));
+                            .condCodes(subCondCodes));
 
   // TODO: Multiplier and divider.
 
@@ -45,13 +47,11 @@ module FPU16
       FPU_ADD: begin
         fpuOut = fpuAddOut;
         condCodes = addCondCodes;
-        addSubView = addView;
       end
 
       FPU_SUB: begin
         fpuOut = fpuSubOut;
         condCodes = subCondCodes;
-        addSubView = subView;
       end
 
       FPU_MUL: begin

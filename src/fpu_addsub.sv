@@ -13,9 +13,7 @@ module fpuAddSub16
   (input  logic         sub,
    input  fp16_t        fpuIn1, fpuIn2,
    output fp16_t        fpuOut,
-   output condCode_t    condCodes,
-   // All internal signals for debugging (currently not used).
-   output addSubDebug_t addSubView);
+   output condCode_t    condCodes);
 
   // Explicit condition codes.
   logic Z, C, N, V;
@@ -85,15 +83,4 @@ module fpuAddSub16
   assign V = (~sub & ~fpuIn1.sign & ~fpuIn2.sign & N) | (sub & fpuIn1.sign & fpuIn2.sign & ~N);
 
   assign fpuOut = normalizedOut;
-
-  // assign addSubView = {
-  //  largeNum,
-  //  smallNum,
-  //  aligner.expDiff,
-  //  alignedSmallNum,
-  //  extSigSum,
-  //  unnormalizedIn,
-  //  normalizedOut,
-  //  fpuOut
-  // };
 endmodule : fpuAddSub16
