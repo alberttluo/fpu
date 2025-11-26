@@ -30,7 +30,7 @@ module fpuAddSubAligner
     alignedSmallNum.sign = smallNum.sign;
 
     // Denormalized values have leading 0 instead of leading 1.
-    extFrac = {smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac} >> expDiff;
+    extFrac = {smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac, 3'b0} >> expDiff;
 
     // TODO: Deal with NaNs.
     alignedSmallNum.exp = largeNum.exp;
@@ -48,12 +48,18 @@ endmodule : fpuAddSubAligner
 */
 module fpuNormalizer16
   (input  unnorm16_t unnormalizedIn,
+   input  logic      sticky,
    output fp16_t     normalizedOut);
 
   // Leading zeros count (not including carry out).
   // Technically, this is leading zeros count + 1, but we store it for shifting
   // purposes.
   logic [$clog2(`FP16_FRACW + 1) - 1:0] lzc;
+
+  logic [`FP16_FRACW + 1:0] extendedFrac;
+
+  // Rounding bits.
+  logic guard, round;
 
   always_comb begin
     if (unnormalizedIn.frac[`FP16_FRACW - 1]) lzc = 1;
@@ -72,7 +78,12 @@ module fpuNormalizer16
     normalizedOut.sign = unnormalizedIn.sign;
     if (unnormalizedIn.leadingInt > 1) begin
       normalizedOut.exp = unnormalizedIn.exp + 1;
-      normalizedOut.frac = {unnormalizedIn.leadingInt, unnormalizedIn.frac} >> 1;
+      extendedFrac = {unnormalizedIn.leadingInt, unnormalizedIn.frac} >> 1;
+
+      guard = unnormalizedIn.frac[0];
+      round = unnormalizedIn.frac[1];
+
+      normalizedOut.frac = extendedFrac[`FP16_FRACW - 1:0] + (guard & (sticky | round));
     end
 
     else if (unnormalizedIn.leadingInt == 0) begin

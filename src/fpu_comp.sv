@@ -16,7 +16,6 @@ module fpuComp16
   assign mag1 = {fpuIn1.exp, fpuIn1.frac};
   assign mag2 = {fpuIn2.exp, fpuIn2.frac};
   assign magLt = (mag1 < mag2);
-  assign magEq = (mag1 == mag2);
   assign magGt = (mag1 > mag2);
 
   assign lt = (fpuIn1.sign & fpuIn2.sign & magGt) |
