@@ -47,19 +47,28 @@ module fpumul_test();
  end
 
  initial begin
-  // $monitor("mulIn1 = %b, mulIn2 = %b, mulOut = %b\n",
-  //          mulIn1, mulIn2, mulOut,
-  //          "storedIn2 = %b\n",
-  //          DUT.storedIn2,
-  //          "start = %b, reset = %b, done = %b\n",
-  //          start, reset, done,
-  //          "compEn = %b, compDone = %b\n",
-  //          DUT.compEn, DUT.compDone,
-  //          "currState = %s, nextState = %s\n",
-  //          DUT.FSM.currState.name, DUT.FSM.nextState.name,
-  //          "===============================================\n");
+   $monitor("fpuIn1(%h) fpuIn2(%h)\n",
+            fpuIn1, fpuIn2,
+            "sigMulOutInt(%b) unnormExp(%b) sigMulOutFrac(%b)\n",
+            DUT.sigMulOutInt, DUT.unnormExp, DUT.sigMulOutFrac,
+            "fpuOut = %h\n",
+            fpuOut,
+            "currState = %s, nextState = %s\n",
+            DUT.FSM.currState.name, DUT.FSM.nextState.name,
+            "sigMulOutInt(%b), sigMulOutFrac(%b)\n",
+            DUT.sigMulOutInt, DUT.sigMulOutFrac);
 
+   // Test 1 * 1.
    doMultiply(16'h3C00, 16'h3C00);
+
+   // Test 12 * 9.
+   doMultiply(16'h4A00, 16'h4880);
+
+   // Test -14 * 119.
+   doMultiply(16'hCB00, 16'h5770);
+
+   // Test 14.564 * 7.833
+   doMultiply(16'h4B48, 16'h47D5);
    $finish;
  end
 endmodule : fpumul_test

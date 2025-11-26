@@ -8,11 +8,12 @@
 `ifndef sv_CONSTANTS
 `define sv_CONSTANTS
 
-`define NUM_OPS    16
+`define NUM_OPS    4
 
 // Bit widths for FP16 (half-precision).
 `define FP16_EXPW  5
 `define FP16_FRACW 10
+`define FP16_BIAS  15
 
 // Bit widths for FP32 (single-precision).
 `define FP32_EXPW  8
@@ -47,11 +48,7 @@ typedef enum logic[$clog2(`NUM_OPS) - 1:0] {
   FPU_ADD,
   FPU_SUB,
   FPU_MUL,
-  FPU_DIV,
-  // TODO: Inequalities after arithmetic operations.
-  FPU_EQ,
-  FPU_LT,
-  FPU_GT
+  FPU_DIV
 } fpuOp_t;
 
 typedef struct packed {
@@ -59,14 +56,7 @@ typedef struct packed {
   logic [1:0] leadingInt;
   logic [`FP16_EXPW - 1:0] exp;
   logic [`FP16_FRACW - 1:0] frac;
-} addSubUnnorm16_t;
-
-typedef struct packed {
-  logic sign;
-  logic [1:0] leadingInt;
-  logic [`FP16_EXPW - 1:0] exp;
-  logic [2 * `FP16_FRACW + 1:0] frac;
-} mulUnnorm16_t;
+} unnorm16_t;
 
 typedef struct packed {
   logic Z, C, N, V;

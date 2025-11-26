@@ -67,30 +67,24 @@ module fpuAddSub16
                               (extLargeFrac - extSmallFrac);
 
   // Normalize floating point fields.
-  addSubUnnorm16_t addUnnormIn;
-  fp16_t addNormOut;
+  unnorm16_t unnormalizedIn;
+  fp16_t normalizedOut;
 
   // Pack the fractional part along with largeNum fields to get unnormalized
   // value.
-  assign addUnnormIn.leadingInt = intPart;
-  assign addUnnormIn.exp = largeNum.exp;
-  assign addUnnormIn.frac = fracSum;
-  assign addUnnormIn.sign = effSignLarge;
-  fpuNormalizer16 normalizer(.addUnnormIn, .mulUnnormIn('0), .addNormOut, .mulNormOut());
+  assign unnormalizedIn.leadingInt = intPart;
+  assign unnormalizedIn.exp = largeNum.exp;
+  assign unnormalizedIn.frac = fracSum;
+  assign unnormalizedIn.sign = effSignLarge;
+  fpuNormalizer16 normalizer(.*);
 
   // Set condition codes.
-  assign Z = (addNormOut == '0);
+  assign Z = (normalizedOut == '0);
   assign C = intPart[1];
-  assign N = addNormOut.sign;
+  assign N = normalizedOut.sign;
   assign V = (~sub & ~fpuIn1.sign & ~fpuIn2.sign & N) | (sub & fpuIn1.sign & fpuIn2.sign & ~N);
 
-  /* If same magnitudes and addition with opposite sign or subtraction with same
-  *  sign, output is 0. This may not need to be a special case, but that is for
-  *  a different time. This comparison is also done in the aligner.
-  *
-  *  TODO: optimization!
-  */
-  assign fpuOut = addNormOut;
+  assign fpuOut = normalizedOut;
 
   // assign addSubView = {
   //  largeNum,
@@ -99,7 +93,7 @@ module fpuAddSub16
   //  alignedSmallNum,
   //  extSigSum,
   //  unnormalizedIn,
-  //  addNormOut,
+  //  normalizedOut,
   //  fpuOut
   // };
 endmodule : fpuAddSub16

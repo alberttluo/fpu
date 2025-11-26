@@ -34,8 +34,7 @@ module fpuMul16
 
   // Normalization fields.
   logic [`FP16_EXPW - 1:0] unnormExp;
-  mulUnnorm16_t mulUnnormIn;
-  fp16_t mulNormOut;
+  unnorm16_t unnormalizedIn;
 
   // Explicit condition codes.
   logic Z, C, N, V;
@@ -43,7 +42,7 @@ module fpuMul16
 
   assign outSign = fpuIn1.sign ^ fpuIn2.sign;
   // TODO: May overflow.
-  assign unnormExp = fpuIn1.exp + fpuIn2.exp;
+  assign unnormExp = fpuIn1.exp + fpuIn2.exp - `FP16_BIAS;
 
   // Prepend implicit 1 or 0 based on exponent.
   assign sigMulIn1 = (fpuIn1.exp == '0) ? {1'b0, fpuIn1.frac} : {1'b1, fpuIn1.frac};
@@ -54,14 +53,14 @@ module fpuMul16
                                 .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}), 
                                 .done(sigMulDone));
 
-  assign mulUnnormIn = {outSign, sigMulOutInt, unnormExp, sigMulOutFrac};
+  assign unnormalizedIn = {outSign, sigMulOutInt, unnormExp,
+                           sigMulOutFrac[2 * `FP16_FRACW - 1:`FP16_FRACW]};
 
-  fpuNormalizer16 mulNormalizer(.addUnnormIn('0), .mulUnnormIn,
-                                .addNormOut(), .mulNormOut(fpuOut));
+  fpuNormalizer16 mulNormalizer(.unnormalizedIn, .normalizedOut(fpuOut));
 
   // TODO: Fix C and V.
   assign Z = (fpuOut == '0);
-  assign C = mulUnnormIn.leadingInt[1];
+  assign C = sigMulOutInt[1];
   assign N = fpuOut.sign;
   assign V = 1'b0;
   fpuMulFSM FSM(.*);
@@ -78,7 +77,7 @@ module fpuMulFSM
     if (reset) begin
       currState <= MUL_WAIT;
     end
-    
+
     else begin
       currState <= nextState;
     end
