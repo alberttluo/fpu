@@ -11,6 +11,7 @@ module aligner_test();
   fp16_t largeNum;
   fp16_t smallNum;
   fp16_t alignedSmallNum;
+  logic sticky;
 
   fpuAddSubAligner DUT(.*);
 
