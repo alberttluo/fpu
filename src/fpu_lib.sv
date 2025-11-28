@@ -103,11 +103,14 @@ module fpuNormalizer16
     round = 1'b0;
 
     if (unnormInt > 2'd1) begin
-      normOut.exp = unnormExp + 1;
+      normOut.exp = unnormExp + `FP16_EXPW'd1;
       explicitSig = {unnormInt, unnormFrac} >> 1;
 
-      guard = unnormFrac[1];
-      round = unnormFrac[0];
+      guard = unnormFrac[PFW - `FP16_FRACW];
+
+      // Multiplication case.
+      if (PFW > `FP16_FRACW)
+        round = unnormFrac[PFW - `FP16_FRACW - 1];
     end
 
     else if (unnormInt == 2'b0) begin
@@ -135,7 +138,7 @@ module fpuNormalizer16
   always_comb begin
     // Round up case.
     if (round & sticky)
-      roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] + '1;
+      roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] + `FP16_FRACW'd1;
     // Round to even case.
     else if (guard & round & ~sticky)
       roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] & 16'hFFFD;
