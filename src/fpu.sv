@@ -9,12 +9,13 @@
 
 //TODO: Make parameterized.
 
-module FPU16
+module fpu16
   (input  fp16_t        fpuIn1, fpuIn2,
    input  fpuOp_t       op,
-   input  logic         clock, reset,
+   input  logic         clock, reset, start,
    output fp16_t        fpuOut,
    output condCode_t    condCodes,
+   output statusFlag_t  statusFlags,
    output fpuComp_t     comps);
 
   // Operation outputs.
@@ -29,6 +30,14 @@ module FPU16
   condCode_t mulCondCodes;
   condCode_t divCondCodes;
 
+  statusFlag_t addStatusFlags;
+  statusFlag_t subStatusFlags;
+  statusFlag_t mulStatusFlags;
+  statusFlag_t divStatusFlags;
+
+  // Done signal for multiplication.
+  logic mulDone;
+
   // Comparison/inequality signals.
   logic lt, eq, gt;
   assign comps = {lt, eq, gt};
@@ -36,9 +45,13 @@ module FPU16
   fpuComp16 fpuComp(.*);
 
   fpuAddSub16 fpuAdder(.sub(1'b0), .fpuIn1, .fpuIn2, .fpuOut(fpuAddOut),
-                       .condCodes(addCondCodes));
+                       .condCodes(addCondCodes), .statusFlags(addStatusFlags));
   fpuAddSub16 fpuSubtracter(.sub(1'b1), .fpuIn1, .fpuIn2, .fpuOut(fpuSubOut),
-                            .condCodes(subCondCodes));
+                            .condCodes(subCondCodes), .statusFlags(subStatusFlags));
+
+  fpuMul16 fpuMultiplier(.fpuIn1, .fpuIn2, .clock, .reset, .start, .fpuOut(fpuMulOut),
+                         .condCodes(mulCondCodes), .statusFlags(mulStatusFlags),
+                         .done(mulDone));
 
   // TODO: Multiplier and divider.
 
@@ -47,22 +60,26 @@ module FPU16
       FPU_ADD: begin
         fpuOut = fpuAddOut;
         condCodes = addCondCodes;
+        statusFlags = addStatusFlags;
       end
 
       FPU_SUB: begin
         fpuOut = fpuSubOut;
         condCodes = subCondCodes;
+        statusFlags = subStatusFlags;
       end
 
       FPU_MUL: begin
         fpuOut = fpuMulOut;
         condCodes = mulCondCodes;
+        statusFlags = mulStatusFlags;
       end
 
       FPU_DIV: begin
         fpuOut = fpuDivOut;
         condCodes = divCondCodes;
+        statusFlags = divStatusFlags;
       end
     endcase
   end
-endmodule : FPU16
+endmodule : fpu16

@@ -13,7 +13,8 @@ module fpuAddSub16
   (input  logic         sub,
    input  fp16_t        fpuIn1, fpuIn2,
    output fp16_t        fpuOut,
-   output condCode_t    condCodes);
+   output condCode_t    condCodes,
+   output statusFlag_t  statusFlags);
 
   // Explicit condition codes.
   logic Z, C, N, V;
@@ -77,7 +78,8 @@ module fpuAddSub16
   // value.
   fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),  
                                                       .unnormFrac(fracSum),
-                                                      .unnormExp(largeNum.exp), .sticky, .normOut(normalizedOut));
+                                                      .unnormExp(largeNum.exp), .sticky, .normOut(normalizedOut),
+                                                      .statusFlags);
 
   // Set condition codes.
   assign Z = (normalizedOut == '0);

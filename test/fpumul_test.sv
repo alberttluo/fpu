@@ -8,13 +8,14 @@
 `include "multiplier.sv"
 
 module fpumul_test();
- fp16_t fpuIn1;
- fp16_t fpuIn2;
- fp16_t fpuOut;
- logic start;
- logic clock, reset;
- logic done;
- condCode_t condCodes;
+ fp16_t       fpuIn1;
+ fp16_t       fpuIn2;
+ fp16_t       fpuOut;
+ logic        start;
+ logic        clock, reset;
+ logic        done;
+ condCode_t   condCodes;
+ statusFlag_t statusFlags;
 
  fpuMul16 DUT(.*);
 
