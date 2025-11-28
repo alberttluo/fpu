@@ -14,18 +14,15 @@
 * point inputs.
 */
 module fpuAddSubAligner
-  (input  fp16_t largeNum, smallNum,
-   output fp16_t alignedSmallNum,
-   output logic  sticky);
+  (input  fp16_t                    largeNum, smallNum,
+   output fp16_t                    alignedSmallNum,
+   output logic [`FP16_FRACW - 1:0] shiftedOut,
+   output logic                     sticky);
 
   logic [`FP16_EXPW - 1:0] expDiff;
 
   // Significand with explicit leading integer (2 bits).
   logic [`FP16_FRACW + 1:0] extFrac;
-
-  // The bits that were shifted out will be stored in the top bits.
-  // Used for sticky bit calculations.
-  logic [`FP16_FRACW - 1:0] shiftedOut;
 
   always_comb begin
     expDiff = largeNum.exp - smallNum.exp;
@@ -87,7 +84,10 @@ module fpuNormalizer16
   // Mantissa after rounding.
   logic [`FP16_FRACW - 1:0] roundedFrac;
 
-  // Rounding bits.
+  // Rounded exponent (may have to add 1 due to fractional rounding).
+  logic [`FP16_EXPW - 1:0] roundedExp;
+  logic [`FP16_EXPW - 1:0] preRoundExp;
+
   logic guard, round, stickyNorm;
 
   // Calcualte LZC (shifts).
@@ -103,7 +103,7 @@ module fpuNormalizer16
     round = 1'b0;
 
     if (unnormInt > 2'd1) begin
-      normOut.exp = unnormExp + `FP16_EXPW'd1;
+      preRoundExp = unnormExp + `FP16_EXPW'd1;
       explicitSig = {unnormInt, unnormFrac} >> 1;
 
       guard = unnormFrac[PFW - `FP16_FRACW];
@@ -116,38 +116,48 @@ module fpuNormalizer16
     else if (unnormInt == 2'b0) begin
       // TODO: Deal with overflow case.
       if (lzc <= unnormExp) begin
-        normOut.exp = unnormExp - lzc;
+        preRoundExp = unnormExp - lzc;
         explicitSig = unnormFrac << lzc;
       end
 
       else begin
         normOut.sign = '0;
-        normOut.exp = '0;
+        preRoundExp = '0;
         explicitSig = '0;
       end
     end
 
     else begin
-      normOut.exp = unnormExp;
+      preRoundExp = unnormExp;
       explicitSig = unnormFrac;
     end
   end
 
   // Rounding logic.
-  // TODO: Deal with overflows into exponent.
   always_comb begin
+    roundedExp = preRoundExp;
+
     // Round up case.
-    if (round & sticky)
+    if (round & sticky) begin
       roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] + `FP16_FRACW'd1;
+
+      // Overflow to exponent.
+      if (roundedFrac == '0)
+        // TODO: NaNs and infinites.
+        roundedExp = preRoundExp + `FP16_EXPW'd1;
+    end
+
     // Round to even case.
     else if (guard & round & ~sticky)
       roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] & 16'hFFFD;
+
     // Otherwise do nothing.
     else
       roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW];
   end
 
   assign normOut.frac = roundedFrac;
+  assign normOut.exp = roundedExp;
 endmodule : fpuNormalizer16
 
 /* Sorts two inputs such that the larger magnitude number is stored in largeNum,

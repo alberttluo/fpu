@@ -47,21 +47,24 @@ module fpuAddSub16
     end
   end
 
+  // Bits that get shifted out from the aligner.
+  logic [`FP16_FRACW - 1:0] shiftedOut;
+
   // Align binary points.
   fp16_t alignedSmallNum;
   fpuAddSubAligner aligner(.*);
 
-  // Add significands.
-  logic [`FP16_FRACW - 1:0] fracSum;
-  logic [`FP16_FRACW:0] extLargeFrac;
-  logic [`FP16_FRACW:0] extSmallFrac;
+  // Add significands (keep the shifted out bits from aligner).
+  logic [2 * `FP16_FRACW - 1:0] fracSum;
+  logic [2 * `FP16_FRACW:0] extLargeFrac;
+  logic [2 * `FP16_FRACW:0] extSmallFrac;
 
   // Fields to build the unnormalized input.
   logic [1:0] intPart;
 
-  assign extLargeFrac = (largeNum.exp == '0) ? {1'b0, largeNum.frac} :
-                                               {1'b1, largeNum.frac};
-  assign extSmallFrac = {1'b0, alignedSmallNum.frac};
+  assign extLargeFrac = (largeNum.exp == '0) ? {1'b0, largeNum.frac, `FP16_FRACW'd0} :
+                                               {1'b1, largeNum.frac, `FP16_FRACW'd0};
+  assign extSmallFrac = {1'b0, alignedSmallNum.frac, shiftedOut};
 
   assign {intPart, fracSum} = (effSignLarge == effSignSmall) ?
                               (extLargeFrac + extSmallFrac) :
@@ -72,7 +75,7 @@ module fpuAddSub16
 
   // Pack the fractional part along with largeNum fields to get unnormalized
   // value.
-  fpuNormalizer16 #(.PFW(`FP16_FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),  
+  fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),  
                                                       .unnormFrac(fracSum),
                                                       .unnormExp(largeNum.exp), .sticky, .normOut(normalizedOut));
 
