@@ -19,9 +19,13 @@ module fpuAddSubAligner
    output logic  sticky);
 
   logic [`FP16_EXPW - 1:0] expDiff;
-  // Extra five bits here for the leading integer (could be 2 if rounding) and
-  // sticky bit calculations.
-  logic [`FP16_FRACW + 4:0] extFrac;
+
+  // Significand with explicit leading integer (2 bits).
+  logic [`FP16_FRACW + 1:0] extFrac;
+
+  // The bits that were shifted out will be stored in the top bits.
+  // Used for sticky bit calculations.
+  logic [`FP16_FRACW - 1:0] shiftedOut;
 
   always_comb begin
     expDiff = largeNum.exp - smallNum.exp;
@@ -30,81 +34,117 @@ module fpuAddSubAligner
     alignedSmallNum.sign = smallNum.sign;
 
     // Denormalized values have leading 0 instead of leading 1.
-    extFrac = {smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac, 3'b0} >> expDiff;
+    {extFrac, shiftedOut} = {smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac, `FP16_FRACW'd0} >> expDiff;
 
     // TODO: Deal with NaNs.
     alignedSmallNum.exp = largeNum.exp;
-    alignedSmallNum.frac = extFrac[`FP16_FRACW + 2:3];
+    alignedSmallNum.frac = extFrac[`FP16_FRACW - 1:0];
 
-    // TODO: Make this actually sticky, currently is just the last third bit
-    // that gets shifted out.
-    sticky = extFrac[0];
+    sticky = (shiftedOut != '0);
   end
 endmodule : fpuAddSubAligner
 
+// Basic leading zeros counter (+ 1) for shift amount.
+// TODO: Optimize.
+module fpuLZC
+  #(parameter int WIDTH = 16,
+              int OUTWIDTH = $clog2(WIDTH + 1))
+  (input  logic [WIDTH - 1:0]             lzcIn,
+   output logic [OUTWIDTH - 1:0] lzcOut);
+
+  always_comb begin
+    lzcOut = WIDTH;
+    for (int i = WIDTH - 1; i >= 0; i--) begin
+      if (lzcIn[i] && lzcOut == WIDTH)
+        lzcOut = WIDTH - i;
+    end
+  end
+endmodule : fpuLZC
+
 /*
-* Normalizes floating point values based on precision type and
-* operation. Currently only supports half-precision.
+* Normalizer for addition, subtaction, and multiplication.
+* Currently only supports half-precision.
 */
 module fpuNormalizer16
-  (input  unnorm16_t unnormalizedIn,
-   input  logic      sticky,
-   output fp16_t     normalizedOut);
+  // Paramterized by pure fractional width before truncation and not including
+  // the leading integer part.
+  #(parameter int PFW = 10)
+  (input  logic                    unnormSign,
+   input  logic [1:0]              unnormInt,
+   input  logic [PFW - 1:0]        unnormFrac,
+   input  logic [`FP16_EXPW - 1:0] unnormExp,
+   input  logic                    sticky,
+   output fp16_t                   normOut);
 
   // Leading zeros count (not including carry out).
   // Technically, this is leading zeros count + 1, but we store it for shifting
   // purposes.
-  logic [$clog2(`FP16_FRACW + 1) - 1:0] lzc;
+  logic [$clog2(PFW + 1) - 1:0] lzc;
 
-  logic [`FP16_FRACW + 1:0] extendedFrac;
+  // Extended significand with explicit 2 bits leading integer.
+  logic [PFW + 1:0] explicitSig;
+
+  // Mantissa after rounding.
+  logic [`FP16_FRACW - 1:0] roundedFrac;
 
   // Rounding bits.
-  logic guard, round;
+  logic guard, round, stickyNorm;
 
+  // Calcualte LZC (shifts).
+  fpuLZC #(.WIDTH(PFW)) fpuMulLZC(.lzcIn(unnormFrac), .lzcOut(lzc));
+
+  // Normalization logic.
   always_comb begin
-    if (unnormalizedIn.frac[`FP16_FRACW - 1]) lzc = 1;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 2]) lzc = 2;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 3]) lzc = 3;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 4]) lzc = 4;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 5]) lzc = 5;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 6]) lzc = 6;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 7]) lzc = 7;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 8]) lzc = 8;
-    else if (unnormalizedIn.frac[`FP16_FRACW - 9]) lzc = 9;
-    else lzc = 10;
-  end
+    // Signs always remain the same.
+    normOut.sign = unnormSign;
 
-  always_comb begin
-    normalizedOut.sign = unnormalizedIn.sign;
-    if (unnormalizedIn.leadingInt > 1) begin
-      normalizedOut.exp = unnormalizedIn.exp + 1;
-      extendedFrac = {unnormalizedIn.leadingInt, unnormalizedIn.frac} >> 1;
+    // Default guard bit is the top bit in the extended part.
+    guard = 1'b0;
+    round = 1'b0;
 
-      guard = unnormalizedIn.frac[0];
-      round = unnormalizedIn.frac[1];
+    if (unnormInt > 2'd1) begin
+      normOut.exp = unnormExp + 1;
+      explicitSig = {unnormInt, unnormFrac} >> 1;
 
-      normalizedOut.frac = extendedFrac[`FP16_FRACW - 1:0] + (guard & (sticky | round));
+      guard = unnormFrac[1];
+      round = unnormFrac[0];
     end
 
-    else if (unnormalizedIn.leadingInt == 0) begin
+    else if (unnormInt == 2'b0) begin
       // TODO: Deal with overflow case.
-      if (lzc <= unnormalizedIn.exp) begin
-        normalizedOut.exp = unnormalizedIn.exp - lzc;
-        normalizedOut.frac = unnormalizedIn.frac << lzc;
+      if (lzc <= unnormExp) begin
+        normOut.exp = unnormExp - lzc;
+        explicitSig = unnormFrac << lzc;
       end
 
       else begin
-        normalizedOut.sign = '0;
-        normalizedOut.exp = '0;
-        normalizedOut.frac = '0;
+        normOut.sign = '0;
+        normOut.exp = '0;
+        explicitSig = '0;
       end
     end
 
     else begin
-      normalizedOut.exp = unnormalizedIn.exp;
-      normalizedOut.frac = unnormalizedIn.frac;
+      normOut.exp = unnormExp;
+      explicitSig = unnormFrac;
     end
   end
+
+  // Rounding logic.
+  // TODO: Deal with overflows into exponent.
+  always_comb begin
+    // Round up case.
+    if (round & sticky)
+      roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] + '1;
+    // Round to even case.
+    else if (guard & round & ~sticky)
+      roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] & 16'hFFFD;
+    // Otherwise do nothing.
+    else
+      roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW];
+  end
+
+  assign normOut.frac = roundedFrac;
 endmodule : fpuNormalizer16
 
 /* Sorts two inputs such that the larger magnitude number is stored in largeNum,

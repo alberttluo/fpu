@@ -52,13 +52,6 @@ typedef enum logic[$clog2(`NUM_OPS) - 1:0] {
 } fpuOp_t;
 
 typedef struct packed {
-  logic sign;
-  logic [1:0] leadingInt;
-  logic [`FP16_EXPW - 1:0] exp;
-  logic [`FP16_FRACW - 1:0] frac;
-} unnorm16_t;
-
-typedef struct packed {
   logic Z, C, N, V;
 } condCode_t;
 

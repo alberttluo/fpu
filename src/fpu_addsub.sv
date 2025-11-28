@@ -68,16 +68,13 @@ module fpuAddSub16
                               (extLargeFrac - extSmallFrac);
 
   // Normalize floating point fields.
-  unnorm16_t unnormalizedIn;
   fp16_t normalizedOut;
 
   // Pack the fractional part along with largeNum fields to get unnormalized
   // value.
-  assign unnormalizedIn.leadingInt = intPart;
-  assign unnormalizedIn.exp = largeNum.exp;
-  assign unnormalizedIn.frac = fracSum;
-  assign unnormalizedIn.sign = effSignLarge;
-  fpuNormalizer16 normalizer(.*);
+  fpuNormalizer16 #(.PFW(`FP16_FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),  
+                                                      .unnormFrac(fracSum),
+                                                      .unnormExp(largeNum.exp), .sticky, .normOut(normalizedOut));
 
   // Set condition codes.
   assign Z = (normalizedOut == '0);
