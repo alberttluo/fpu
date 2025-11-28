@@ -4,4 +4,4 @@ An implementation of an IEEE754-compliant floating point unit, written in System
 Maintainer(s) and Author(s): Albert Luo albertlu@cmu.edu
 
 ## Status
-I am currently working on fixing the normalization unit to do rounding. Additionally, some condition codes are not properly set. There is no extensive testbench, but brief stress testing shows that addition/subtraction, multiplication, and comparisons are all functionally correct (disregarding rounding). The hardest part is yet to come...division...
+I am currently working on getting the condition codes set properly and adding support for NaNs. Check out the 'fix/condcodes' branch for more updates. This should be a relatively quick fix. 
