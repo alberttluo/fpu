@@ -62,7 +62,7 @@ module fpuMul16
 
   // TODO: Fix C and V.
   assign Z = (fpuOut == '0);
-  assign C = sigMulOutInt[1];
+  assign C = 1'b0;
   assign N = fpuOut.sign;
   assign V = 1'b0;
   fpuMulFSM FSM(.*);

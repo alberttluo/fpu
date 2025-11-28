@@ -81,9 +81,9 @@ module fpuAddSub16
 
   // Set condition codes.
   assign Z = (normalizedOut == '0);
-  assign C = intPart[1];
+  assign C = 1'b0;
   assign N = normalizedOut.sign;
-  assign V = (~sub & ~fpuIn1.sign & ~fpuIn2.sign & N) | (sub & fpuIn1.sign & fpuIn2.sign & ~N);
+  assign V = 1'b0;
 
   assign fpuOut = normalizedOut;
 endmodule : fpuAddSub16
