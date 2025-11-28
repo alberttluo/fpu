@@ -56,6 +56,10 @@ typedef struct packed {
 } condCode_t;
 
 typedef struct packed {
+  logic NV, DZ, OF, UF, NX;
+} statusFlag_t;
+
+typedef struct packed {
   logic lt, eq, gt;
 } fpuComp_t;
 `endif

@@ -14,6 +14,7 @@ module fpuaddsub_test();
   fpuOp_t       op; // Useless if just testing ALU operations.
   fp16_t        fpuOut;
   condCode_t    condCodes;
+  statusFlag_t  statusFlags;
 
   fpuAddSub16 DUT(.*);
 
