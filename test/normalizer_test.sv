@@ -2,21 +2,27 @@
 `include "fpu_lib.sv"
 
 module normalizer_test();
-  unnorm16_t unnormalizedIn;
-  fp16_t normalizedOut;
+  localparam int EFW = 11;
 
-  fpuNormalizer16 DUT(.*);
+  logic unnormSign;
+  logic [1:0] unnormInt;
+  logic [EFW - 1:0] unnormFrac;
+  logic [`FP16_EXPW - 1:0] unnormExp;
+  logic sticky;
+  fp16_t normOut;
+
+  fpuNormalizer16 #(.EFW(EFW)) DUT(.*);
 
   initial begin
-    unnormalizedIn <= 18'b0_11_10001_0000000000;
+    {unnormSign, unnormInt, unnormExp, unnormFrac} <= 19'b0_11_10001_00000000000;
 
     #10;
 
-    unnormalizedIn <= 18'b1_01_10001_0000000000;
+    {unnormSign, unnormInt, unnormExp, unnormFrac} <= 19'b1_01_10001_00000000000;
 
     #10;
 
-    unnormalizedIn <= 18'b0_00_01000_0011111111;
+    {unnormSign, unnormInt, unnormExp, unnormFrac} <= 19'b0_00_01000_00111111111;
 
     #10;
 

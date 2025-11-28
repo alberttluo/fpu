@@ -37,7 +37,6 @@ module fpuMul16
 
   // Normalization fields.
   logic [`FP16_EXPW - 1:0] unnormExp;
-  unnorm16_t unnormalizedIn;
 
   // Explicit condition codes.
   logic Z, C, N, V;
@@ -56,12 +55,10 @@ module fpuMul16
                                 .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}), 
                                 .done(sigMulDone));
 
-  assign unnormalizedIn = {outSign, sigMulOutInt, unnormExp,
-                           sigMulOutFrac[2 * `FP16_FRACW - 1:`FP16_FRACW]};
-
   assign sticky = sigMulOutFrac[`FP16_FRACW - 1:0] != '0;
-
-  fpuNormalizer16 mulNormalizer(.unnormalizedIn, .sticky, .normalizedOut(fpuOut));
+  fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) mulNormalizer(.unnormSign(outSign), .unnormInt(sigMulOutInt),
+                                                         .unnormFrac(sigMulOutFrac),
+                                                         .unnormExp, .sticky, .normOut(fpuOut));
 
   // TODO: Fix C and V.
   assign Z = (fpuOut == '0);
