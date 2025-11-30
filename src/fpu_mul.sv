@@ -16,12 +16,12 @@ typedef enum logic [1:0] {
 } fpuMulState_t;
 
 module fpuMul16
-  (input  fp16_t       fpuIn1, fpuIn2,
-   input  logic        clock, reset, start,
-   output fp16_t       fpuOut,
-   output logic        done,
-   output condCode_t   condCodes,
-   output statusFlag_t statusFlags);
+  (input  fp16_t         fpuIn1, fpuIn2,
+   input  logic          clock, reset, start,
+   output fp16_t         fpuOut,
+   output logic          done,
+   output condCode_t     condCodes,
+   output opStatusFlag_t opStatusFlags);
 
   // Significand multiplication signals.
   logic [1:0] sigMulOutInt;
@@ -60,7 +60,7 @@ module fpuMul16
   fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) mulNormalizer(.unnormSign(outSign), .unnormInt(sigMulOutInt),
                                                          .unnormFrac(sigMulOutFrac),
                                                          .unnormExp, .sticky, .normOut(fpuOut),
-                                                         .statusFlags);
+                                                         .opStatusFlags);
 
   // TODO: Fix C and V.
   assign Z = (fpuOut == '0);

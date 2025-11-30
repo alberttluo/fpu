@@ -18,6 +18,10 @@ module fpuaddsub_test();
 
   fpuAddSub16 DUT(.*);
 
+  function automatic randNum();
+    return fp16_t'($urandom);
+  endfunction
+
   task displayInfo();
     $display("fpuIn1(%b)    fpuIn2(%b)\n",
              fpuIn1, fpuIn2,
@@ -31,110 +35,33 @@ module fpuaddsub_test();
              "ZCNV(%b)\n",
              condCodes,
              "=====================================================\n");
-    #10;
+  endtask
+
+  task automatic doAdd
+    (input fp16_t in1,
+     input fp16_t in2);
+
+    fpuIn1 <= in1;
+    fpuIn2 <= in2;
+     #10;
+     displayInfo();
+     #10;
   endtask
 
   initial begin
-    $display("Testing 1 + 0...");
-    sub <= '0;
-    fpuIn1 <= 16'h3C00;
-    fpuIn2 <= '0;
-    op <= FPU_ADD;
-    #10;
-    displayInfo();
+    // 20 random additions.
+    sub <= 1'b0;
 
-    $display("Testing 2 + 1...");
-    fpuIn1 <= 16'h4000;
-    fpuIn2 <= 16'h3C00;
-    op <= FPU_ADD;
-    #10;
-    displayInfo();
+    for (int i = 0; i < 20; i++) begin
+      doAdd(randNum(), randNum());
+    end
 
-    $display("Testing 4 + 2...");
-    fpuIn1 <= 16'h4400;
-    fpuIn2 <= 16'h4000;
-    op <= FPU_ADD;
-    #10;
-    displayInfo();
+    // 20 random subtractions.
+    sub <= 1'b1;
+    for (int i = 0; i < 20; i++) begin
+      doAdd(randNum(), randNum());
+    end
 
-    $display("Testing 4 + 17...");
-    fpuIn1 <= 16'h4400;
-    fpuIn2 <= 16'h4C40;
-    op <= FPU_ADD;
-    #10;
-    displayInfo();
-
-    $display("Testing 444 + 783...");
-    fpuIn1 <= 16'h5EF0;
-    fpuIn2 <= 16'h621E;
-    op <= FPU_ADD;
-    #10;
-    displayInfo();
-
-    $display("Testing 1 - 1...");
-    fpuIn1 <= 16'h3C00;
-    fpuIn2 <= 16'h3C00;
-    sub <= '1;
-    op <= FPU_SUB;
-    #10;
-    displayInfo();
-
-    $display("Testing 1 - 2...");
-    fpuIn1 <= 16'h3C00;
-    fpuIn2 <= 16'h4000;
-    sub <= '1;
-    op <= FPU_SUB;
-    #10;
-    displayInfo();
-
-    $display("Testing 10 - 3...");
-    fpuIn1 <= 16'h4900;
-    fpuIn2 <= 16'h4200;
-    sub <= '1;
-    op <= FPU_SUB;
-    #10;
-    displayInfo();
-
-    $display("Testing 398 - 52...");
-    fpuIn1 <= 16'h5E38;
-    fpuIn2 <= 16'h5280;
-    sub <= '1;
-    op <= FPU_SUB;
-    #10;
-    displayInfo();
-
-    $display("Testing -1 + 1...");
-    fpuIn1 <= 16'hBC00;
-    fpuIn2 <= 16'h3C00;
-    sub <= '0;
-    op <= FPU_ADD;
-    #10;
-    displayInfo();
-
-    $display("Testing -1 + 5...");
-    fpuIn1 <= 16'hBC00;
-    fpuIn2 <= 16'h4500;
-    sub <= '0;
-    op <= FPU_ADD;
-    #10;
-    displayInfo();
-
-    // Tests that cause rounding issues.
-    $display("Testing -444 + 8972...");
-    fpuIn1 <= 16'hDEF0;
-    fpuIn2 <= 16'h7062;
-    sub <= '0;
-    op <= FPU_ADD;
-    #10;
-    displayInfo();
-
-    $display("Testing -3210 + 5019...");
-    fpuIn1 <= 16'hEA45;
-    fpuIn2 <= 16'h6CE7;
-    sub <= '0;
-    op <= FPU_ADD;
-    #10;
-    displayInfo();
     $finish;
   end
 endmodule : fpuaddsub_test

@@ -71,7 +71,7 @@ module fpuNormalizer16
    input  logic [`FP16_EXPW - 1:0] unnormExp,
    input  logic                    sticky,
    output fp16_t                   normOut,
-   output statusFlag_t             statusFlags);
+   output opStatusFlag_t           opStatusFlags);
 
   // Leading zeros count (not including carry out).
   // Technically, this is leading zeros count + 1, but we store it for shifting
@@ -84,9 +84,9 @@ module fpuNormalizer16
   // Mantissa after rounding.
   logic [`FP16_FRACW - 1:0] roundedFrac;
 
-  // Explicit status flags.
-  logic NV, DZ, OF, UF, NX;
-  assign statusFlags = {NV, DZ, OF, UF, NX};
+  // Explicit op status flags.
+  logic OF, UF, NX;
+  assign opStatusFlags = {OF, UF, NX};
 
   // Rounded exponent (may have to add 1 due to fractional rounding).
   logic [`FP16_EXPW - 1:0] roundedExp;
@@ -110,11 +110,11 @@ module fpuNormalizer16
       preRoundExp = unnormExp + `FP16_EXPW'd1;
       explicitSig = {unnormInt, unnormFrac} >> 1;
 
-      guard = unnormFrac[PFW - `FP16_FRACW];
+      guard = unnormFrac[PFW - `FP16_FRACW + 1];
 
       // Multiplication case.
       if (PFW > `FP16_FRACW)
-        round = unnormFrac[PFW - `FP16_FRACW - 1];
+        round = unnormFrac[PFW - `FP16_FRACW];
     end
 
     else if (unnormInt == 2'b0) begin
@@ -142,7 +142,7 @@ module fpuNormalizer16
     roundedExp = preRoundExp;
 
     // Round up case.
-    if (round & sticky) begin
+    if (round & (sticky | guard)) begin
       roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] + `FP16_FRACW'd1;
 
       // Overflow to exponent.
