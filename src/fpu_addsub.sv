@@ -78,7 +78,9 @@ module fpuAddSub16
   // value.
   fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),  
                                                       .unnormFrac(fracSum),
-                                                      .unnormExp(largeNum.exp), .sticky, .normOut(normalizedOut),
+                                                      .unnormExp(largeNum.exp), .sticky,
+                                                      .denormDiff(1'b0),
+                                                      .OFin(1'b0), .normOut(normalizedOut),
                                                       .opStatusFlags);
 
   // Set condition codes.

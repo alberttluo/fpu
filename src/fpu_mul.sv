@@ -44,8 +44,16 @@ module fpuMul16
   assign condCodes = {Z, C, N, V};
 
   assign outSign = fpuIn1.sign ^ fpuIn2.sign;
-  // TODO: May overflow.
-  assign unnormExp = fpuIn1.exp + fpuIn2.exp - `FP16_BIAS;
+
+  // Explicit OF flag (no need to be set in normalizer).
+  logic OFin;
+  logic expCarry;
+  logic denorm;
+  assign {expCarry, unnormExp} = fpuIn1.exp + fpuIn2.exp - `FP16_BIAS;
+
+  // Ensure that underflow from the above computation does not signal OF.
+  assign denorm = (fpuIn1.exp + fpuIn2.exp) <= {expCarry, unnormExp};
+  assign OFin = ((expCarry & ~denorm) | unnormExp == {`FP16_EXPW{'1}});
 
   // Prepend implicit 1 or 0 based on exponent.
   assign sigMulIn1 = (fpuIn1.exp == '0) ? {1'b0, fpuIn1.frac} : {1'b1, fpuIn1.frac};
@@ -53,13 +61,16 @@ module fpuMul16
 
   // Sequential multiplier to multiply significands.
   fpuMultiplier16 sigMultiplier(.mulIn1(sigMulIn1), .mulIn2(sigMulIn2), .start,
-                                .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}), 
+                                .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}),
                                 .done(sigMulDone));
 
   assign sticky = sigMulOutFrac[`FP16_FRACW - 1:0] != '0;
   fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) mulNormalizer(.unnormSign(outSign), .unnormInt(sigMulOutInt),
                                                          .unnormFrac(sigMulOutFrac),
-                                                         .unnormExp, .sticky, .normOut(fpuOut),
+                                                         .unnormExp(denorm ? {`FP16_EXPW'd0} : unnormExp),
+                                                         .denormDiff(`FP16_BIAS - (fpuIn1.exp + fpuIn2.exp)),
+                                                         .sticky,
+                                                         .OFin, .normOut(fpuOut),
                                                          .opStatusFlags);
 
   // TODO: Fix C and V.

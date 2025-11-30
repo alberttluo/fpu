@@ -65,13 +65,15 @@ module fpuNormalizer16
   // Paramterized by pure fractional width before truncation and not including
   // the leading integer part.
   #(parameter int PFW = 10)
-  (input  logic                    unnormSign,
-   input  logic [1:0]              unnormInt,
-   input  logic [PFW - 1:0]        unnormFrac,
-   input  logic [`FP16_EXPW - 1:0] unnormExp,
-   input  logic                    sticky,
-   output fp16_t                   normOut,
-   output opStatusFlag_t           opStatusFlags);
+  (input  logic                     unnormSign,
+   input  logic [1:0]               unnormInt,
+   input  logic [PFW - 1:0]         unnormFrac,
+   input  logic [`FP16_EXPW - 1:0]  unnormExp,
+   input  logic [`FP16_FRACW - 1:0] denormDiff,
+   input  logic                     sticky,
+   input  logic                     OFin,
+   output fp16_t                    normOut,
+   output opStatusFlag_t            opStatusFlags);
 
   // Leading zeros count (not including carry out).
   // Technically, this is leading zeros count + 1, but we store it for shifting
@@ -86,16 +88,38 @@ module fpuNormalizer16
 
   // Explicit op status flags.
   logic OF, UF, NX;
+  logic normOF;
+  assign OF = (normOF | OFin);
   assign opStatusFlags = {OF, UF, NX};
 
   // Rounded exponent (may have to add 1 due to fractional rounding).
   logic [`FP16_EXPW - 1:0] roundedExp;
   logic [`FP16_EXPW - 1:0] preRoundExp;
 
-  logic guard, round, stickyNorm;
+  // Post denormalized mantissa.
+  logic [PFW - 1:0] postDenormFrac;
+
+  // Denormalized shift amount.
+  logic [`FP16_FRACW - 1:0] denormShiftAmount;
+
+  logic guard, round;
 
   // Calcualte LZC (shifts).
   fpuLZC #(.WIDTH(PFW)) fpuMulLZC(.lzcIn(unnormFrac), .lzcOut(lzc));
+
+  // Check if biased exponent is 0 (denormalized), so shift binary point left 1.
+  always_comb begin
+    if (unnormExp == `FP16_EXPW'd0) begin
+      postDenormFrac = explicitSig >> denormShiftAmount;
+      normOut.exp = `FP16_EXPW'd0;
+      normOut.frac = OF ? `FP16_FRACW'd0 : postDenormFrac[PFW - 1:PFW - `FP16_FRACW];
+    end
+    else begin
+      postDenormFrac = explicitSig[PFW - `FP16_FRACW:0];
+      normOut.exp = (OF ? {`FP16_FRACW{'1}} : roundedExp);
+      normOut.frac = OF ? `FP16_FRACW'd0 : roundedFrac;
+    end
+  end
 
   // Normalization logic.
   always_comb begin
@@ -105,16 +129,15 @@ module fpuNormalizer16
     // Default guard bit is the top bit in the extended part.
     guard = 1'b0;
     round = 1'b0;
+    denormShiftAmount = (denormDiff + 1);
 
     if (unnormInt > 2'd1) begin
       preRoundExp = unnormExp + `FP16_EXPW'd1;
       explicitSig = {unnormInt, unnormFrac} >> 1;
+      denormShiftAmount--;
 
       guard = unnormFrac[PFW - `FP16_FRACW + 1];
-
-      // Multiplication case.
-      if (PFW > `FP16_FRACW)
-        round = unnormFrac[PFW - `FP16_FRACW];
+      round = unnormFrac[PFW - `FP16_FRACW];
     end
 
     else if (unnormInt == 2'b0) begin
@@ -122,6 +145,9 @@ module fpuNormalizer16
       if (lzc <= unnormExp) begin
         preRoundExp = unnormExp - lzc;
         explicitSig = unnormFrac << lzc;
+
+        guard = explicitSig[PFW - `FP16_FRACW];
+        round = explicitSig[PFW - `FP16_FRACW - 1];
       end
 
       else begin
@@ -133,13 +159,17 @@ module fpuNormalizer16
 
     else begin
       preRoundExp = unnormExp;
-      explicitSig = unnormFrac;
+      explicitSig = {unnormInt, unnormFrac};
+
+      guard = unnormFrac[PFW - `FP16_FRACW];
+      round = unnormFrac[PFW - `FP16_FRACW - 1];
     end
   end
 
   // Rounding logic.
   always_comb begin
     roundedExp = preRoundExp;
+    normOF = 1'b0;
 
     // Round up case.
     if (round & (sticky | guard)) begin
@@ -151,7 +181,7 @@ module fpuNormalizer16
         roundedExp = preRoundExp + `FP16_EXPW'd1;
 
         if (roundedExp == `FP16_EXPW'd0)
-          OF = 1;
+          normOF = 1;
       end
     end
 
@@ -166,9 +196,7 @@ module fpuNormalizer16
 
   // Result is inexact if any shifted out bits are 1.
   assign NX = (sticky | round);
-
-  assign normOut.frac = roundedFrac;
-  assign normOut.exp = roundedExp;
+  assign UF = ~OF && (roundedExp == `FP16_EXPW'd0 && roundedFrac != `FP16_FRACW'd0);
 endmodule : fpuNormalizer16
 
 /* Sorts two inputs such that the larger magnitude number is stored in largeNum,
