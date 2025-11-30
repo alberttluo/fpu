@@ -8,21 +8,21 @@
 `include "fpu_lib.sv"
 
 module fpuaddsub_test();
-  logic         sub;
-  fp16_t        fpuIn1;
-  fp16_t        fpuIn2;
-  fpuOp_t       op; // Useless if just testing ALU operations.
-  fp16_t        fpuOut;
-  condCode_t    condCodes;
-  statusFlag_t  statusFlags;
+  logic           sub;
+  fp16_t          fpuIn1;
+  fp16_t          fpuIn2;
+  fpuOp_t         op; // Useless if just testing ALU operations.
+  fp16_t          fpuOut;
+  condCode_t      condCodes;
+  opStatusFlag_t  opStatusFlags;
 
   fpuAddSub16 DUT(.*);
 
-  function automatic randNum();
+  function automatic fp16_t randNum();
     return fp16_t'($urandom);
   endfunction
 
-  task displayInfo();
+  task automatic displayInfo();
     $display("fpuIn1(%b)    fpuIn2(%b)\n",
              fpuIn1, fpuIn2,
              "S1(%b)E1(%b)frac(%b)    S2(%b)E2(%b)frac(%b)\n",
@@ -44,8 +44,6 @@ module fpuaddsub_test();
     fpuIn1 <= in1;
     fpuIn2 <= in2;
      #10;
-     displayInfo();
-     #10;
   endtask
 
   initial begin
@@ -54,12 +52,14 @@ module fpuaddsub_test();
 
     for (int i = 0; i < 20; i++) begin
       doAdd(randNum(), randNum());
+      #10;
     end
 
     // 20 random subtractions.
     sub <= 1'b1;
     for (int i = 0; i < 20; i++) begin
       doAdd(randNum(), randNum());
+      #10;
     end
 
     $finish;
