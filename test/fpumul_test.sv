@@ -15,7 +15,7 @@ module fpumul_test();
  logic        clock, reset;
  logic        done;
  condCode_t   condCodes;
- statusFlag_t statusFlags;
+ opStatusFlag_t opStatusFlags;
 
  fpuMul16 DUT(.*);
 
@@ -40,6 +40,10 @@ module fpumul_test();
             in1, in1, in2, in2, fpuOut, fpuOut);
  endtask
 
+ function automatic fp16_t randNum();
+   return fp16_t'($urandom);
+ endfunction
+
  initial begin
    reset = 1;
    reset <= 0;
@@ -59,17 +63,11 @@ module fpumul_test();
             "sigMulOutInt(%b), sigMulOutFrac(%b)\n",
             DUT.sigMulOutInt, DUT.sigMulOutFrac);
 
-   // Test 1 * 1.
-   doMultiply(16'h3C00, 16'h3C00);
+   // 100 random multiplications.
 
-   // Test 12 * 9.
-   doMultiply(16'h4A00, 16'h4880);
-
-   // Test -14 * 119.
-   doMultiply(16'hCB00, 16'h5770);
-
-   // Test 14.564 * 7.833
-   doMultiply(16'h4B48, 16'h47D5);
+   for (int i = 0; i < 100; i++) begin
+     doMultiply(randNum(), randNum());
+   end
    $finish;
  end
 endmodule : fpumul_test

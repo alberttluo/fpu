@@ -60,6 +60,10 @@ typedef struct packed {
 } statusFlag_t;
 
 typedef struct packed {
+  logic OF, UF, NX;
+} opStatusFlag_t;
+
+typedef struct packed {
   logic lt, eq, gt;
 } fpuComp_t;
 `endif
