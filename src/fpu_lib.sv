@@ -181,4 +181,26 @@ module fpuAddSubSorter
   assign {largeNum, smallNum} = ({fpuIn1.exp, fpuIn1.frac} > {fpuIn2.exp, fpuIn2.frac}) ?
                                 {fpuIn1, fpuIn2} : {fpuIn2, fpuIn1};
 endmodule : fpuAddSubSorter
+
+/*
+* Checks that an input is either infinity or NaN.
+*/
+module fpuIsSpecialValue
+  (input  fp16_t fpuIn,
+   output logic  inf, nan);
+
+  always_comb begin
+    inf = 1'b0;
+    nan = 1'b0;
+    if (fpuIn.exp == {`FP16_EXPW{'1}}) begin
+      if (fpuIn.frac == {`FP16_FRACW{'0}}) begin
+        inf = 1'b1;
+      end
+
+      else begin
+        nan = 1'b1;
+      end
+    end
+  end
+endmodule : fpuIsSpecialValue
 `endif
