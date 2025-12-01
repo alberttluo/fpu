@@ -24,8 +24,12 @@ module fpuAddSubAligner
   // Significand with explicit leading integer (2 bits).
   logic [`FP16_FRACW + 1:0] extFrac;
 
+  logic [`FP16_EXPW - 1:0] effExp1;
+  logic [`FP16_EXPW - 1:0] effExp2;
+
   always_comb begin
-    expDiff = largeNum.exp - smallNum.exp;
+    // Exponent is 1 if denormalized -- not zero.
+    expDiff = (largeNum.exp == `FP16_EXPW'd0 ? `FP16_EXPW'd1 : largeNum.exp) - (smallNum.exp == `FP16_EXPW'd0 ? `FP16_EXPW'd1 : smallNum.exp);
 
     // Effective sign -- flip if subtraction so we can always add.
     alignedSmallNum.sign = smallNum.sign;
