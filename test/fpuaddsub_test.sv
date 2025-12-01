@@ -22,6 +22,16 @@ module fpuaddsub_test();
     return fp16_t'($urandom);
   endfunction
 
+  function automatic fp16_t randDenorm();
+    fp16_t val;
+
+    do begin
+      val = $urandom;
+    end while (val.exp != `FP16_EXPW'd0);
+
+    return val;
+  endfunction
+
   task automatic displayInfo();
     $display("fpuIn1(%b)    fpuIn2(%b)\n",
              fpuIn1, fpuIn2,
@@ -58,6 +68,20 @@ module fpuaddsub_test();
     sub <= 1'b1;
     for (int i = 0; i < 20; i++) begin
       doAdd(randNum(), randNum());
+      #10;
+    end
+
+    // 5 random add/subtract for mixed denorms.
+    for (int i = 0; i < 5; i++) begin
+      for (int j = 0; j <= 1; j++) begin
+        sub <= j;
+        doAdd(randDenorm(), randDenorm());
+        #10;
+        doAdd(randDenorm(), randNum());
+        #10;
+        doAdd(randNum(), randDenorm());
+        #10;
+      end
       #10;
     end
 

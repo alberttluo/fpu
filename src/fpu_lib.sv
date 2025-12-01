@@ -141,20 +141,11 @@ module fpuNormalizer16
     end
 
     else if (unnormInt == 2'b0) begin
-      // TODO: Deal with overflow case.
-      if (lzc <= unnormExp) begin
-        preRoundExp = unnormExp - lzc;
-        explicitSig = unnormFrac << lzc;
+      preRoundExp = unnormExp - lzc;
+      explicitSig = {unnormInt, unnormFrac} << lzc;
 
-        guard = explicitSig[PFW - `FP16_FRACW];
-        round = explicitSig[PFW - `FP16_FRACW - 1];
-      end
-
-      else begin
-        normOut.sign = '0;
-        preRoundExp = '0;
-        explicitSig = '0;
-      end
+      guard = explicitSig[PFW - `FP16_FRACW];
+      round = explicitSig[PFW - `FP16_FRACW - 1];
     end
 
     else begin
