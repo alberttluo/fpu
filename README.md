@@ -4,4 +4,4 @@ An implementation of an IEEE754-compliant floating point unit, written in System
 Maintainer(s) and Author(s): Albert Luo albertlu@cmu.edu
 
 ## Status
-I am currently working on getting the condition codes set properly and adding support for NaNs. Check out the 'fix/condcodes' branch for more updates. This should be a relatively quick fix. 
+I am currently working on some cleanup. There are some scattered bugs that should be fixed relatively quickly. More specifically, they have to do with the aligner, which must account for the difference in exponent calculation between denormalized and normalized floats. Besides that, all the basic operations, except division, have been implemented and tested (not thoroughly). Check of the 'fix/cleanup' branch for more up-to-date progress. 
