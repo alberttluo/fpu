@@ -13,6 +13,7 @@ module fpu16
    input  fpuOp_t       op,
    input  logic         clock, reset, start,
    output fp16_t        fpuOut,
+   output logic         mulDone,
    output condCode_t    condCodes,
    output statusFlag_t  statusFlags,
    output fpuComp_t     comps);
@@ -55,9 +56,6 @@ module fpu16
   opStatusFlag_t subStatusFlags;
   opStatusFlag_t mulStatusFlags;
   opStatusFlag_t divStatusFlags;
-
-  // Done signal for multiplication.
-  logic mulDone;
 
   // Comparison/inequality signals.
   logic lt, eq, gt;
