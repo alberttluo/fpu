@@ -25,7 +25,8 @@ module fpuAddSubAligner
   logic [`FP16_FRACW + 1:0] extFrac;
 
   always_comb begin
-    expDiff = largeNum.exp - smallNum.exp;
+    // Exponent is 1 if denormalized -- not zero.
+    expDiff = (largeNum.exp == `FP16_EXPW'd0 ? `FP16_EXPW'd1 : largeNum.exp) - (smallNum.exp == `FP16_EXPW'd0 ? `FP16_EXPW'd1 : smallNum.exp);
 
     // Effective sign -- flip if subtraction so we can always add.
     alignedSmallNum.sign = smallNum.sign;
@@ -141,20 +142,11 @@ module fpuNormalizer16
     end
 
     else if (unnormInt == 2'b0) begin
-      // TODO: Deal with overflow case.
-      if (lzc <= unnormExp) begin
-        preRoundExp = unnormExp - lzc;
-        explicitSig = unnormFrac << lzc;
+      preRoundExp = unnormExp - lzc;
+      explicitSig = {unnormInt, unnormFrac} << lzc;
 
-        guard = explicitSig[PFW - `FP16_FRACW];
-        round = explicitSig[PFW - `FP16_FRACW - 1];
-      end
-
-      else begin
-        normOut.sign = '0;
-        preRoundExp = '0;
-        explicitSig = '0;
-      end
+      guard = explicitSig[PFW - `FP16_FRACW];
+      round = explicitSig[PFW - `FP16_FRACW - 1];
     end
 
     else begin

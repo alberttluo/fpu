@@ -74,12 +74,17 @@ module fpuAddSub16
   // Normalize floating point fields.
   fp16_t normalizedOut;
 
+  // If denormalized, denormDiff is just lzc of fracSum.
+  logic [`FP16_FRACW - 1:0] denormDiff;
+  fpuLZC #(.WIDTH(2 * `FP16_FRACW)) LZC(.lzcIn(fracSum), .lzcOut(denormDiff));
+
+
   // Pack the fractional part along with largeNum fields to get unnormalized
   // value.
   fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),  
                                                       .unnormFrac(fracSum),
                                                       .unnormExp(largeNum.exp), .sticky,
-                                                      .denormDiff(1'b0),
+                                                      .denormDiff(denormDiff + '1),
                                                       .OFin(1'b0), .normOut(normalizedOut),
                                                       .opStatusFlags);
 
