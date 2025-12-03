@@ -89,8 +89,9 @@ module fpuNormalizer16
 
   // Explicit op status flags.
   logic OF, UF, NX;
-  logic normOF;
-  assign OF = (normOF | OFin);
+  logic preRoundOF;
+  logic roundNormOF;
+  assign OF = (preRoundOF | roundNormOF | OFin);
   assign opStatusFlags = {OF, UF, NX};
 
   // Rounded exponent (may have to add 1 due to fractional rounding).
@@ -110,14 +111,14 @@ module fpuNormalizer16
 
   // Check if biased exponent is 0 (denormalized), so shift binary point left 1.
   always_comb begin
-    if (unnormExp == `FP16_EXPW'd0) begin
+    if (unnormExp == `FP16_EXPW'd0 & ~OFin) begin
       postDenormFrac = explicitSig >> denormShiftAmount;
       normOut.exp = `FP16_EXPW'd0;
       normOut.frac = OF ? `FP16_FRACW'd0 : postDenormFrac[PFW - 1:PFW - `FP16_FRACW];
     end
     else begin
       postDenormFrac = explicitSig[PFW - `FP16_FRACW:0];
-      normOut.exp = (OF ? {`FP16_FRACW{'1}} : roundedExp);
+      normOut.exp = OF ? {`FP16_FRACW{'1}} : roundedExp;
       normOut.frac = OF ? `FP16_FRACW'd0 : roundedFrac;
     end
   end
@@ -130,10 +131,16 @@ module fpuNormalizer16
     // Default guard bit is the top bit in the extended part.
     guard = 1'b0;
     round = 1'b0;
+    preRoundOF = 1'b0;
     denormShiftAmount = (denormDiff + 1);
 
     if (unnormInt > 2'd1) begin
       preRoundExp = unnormExp + `FP16_EXPW'd1;
+
+      if (preRoundExp > `FP16_EXP_MAX) begin
+        preRoundOF = 1'b1;
+      end
+
       explicitSig = {unnormInt, unnormFrac} >> 1;
       denormShiftAmount--;
 
@@ -161,7 +168,7 @@ module fpuNormalizer16
   // Rounding logic.
   always_comb begin
     roundedExp = preRoundExp;
-    normOF = 1'b0;
+    roundNormOF = 1'b0;
 
     // Round up case.
     if (round & (sticky | guard)) begin
@@ -172,8 +179,8 @@ module fpuNormalizer16
         // TODO: NaNs and infinites.
         roundedExp = preRoundExp + `FP16_EXPW'd1;
 
-        if (roundedExp == `FP16_EXPW'd0)
-          normOF = 1;
+        if (roundedExp == `FP16_EXPW'd0 || roundedExp > `FP16_EXP_MAX)
+          roundNormOF = 1;
       end
     end
 
