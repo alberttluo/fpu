@@ -15,6 +15,7 @@
 `define FP16_FRACW   10
 `define FP16_BIAS    `FP16_EXPW'd15
 `define FP16_EXP_MAX `FP16_EXPW'd30
+`define FP16_NAN     16'h7E00 
 
 // Bit widths for FP32 (single-precision).
 `define FP32_EXPW  8

@@ -35,6 +35,9 @@ module fpu16
   fpuIsSpecialValue specVal1(.fpuIn(fpuIn1), .inf(isInf1), .nan(isNaN1)),
                     specval2(.fpuIn(fpuIn2), .inf(isInf2), .nan(isNaN2));
 
+  logic anyNaNs;
+  assign anyNaNs = (isNaN1 | isNaN2);
+
   // Status flags set by the operation.
   opStatusFlag_t opStatusFlags;
 
@@ -42,7 +45,7 @@ module fpu16
   logic NV, DZ;
   assign statusFlags = {NV, DZ, opStatusFlags};
 
-  assign NV = (isNaN1 || isNaN2) ||
+  assign NV = anyNaNs ||
               // Opposite signed infinites add/sub.
               (isInf1 && isInf2 && (fpuIn1.sign ^ fpuIn2.sign) && (op == FPU_ADD || op == FPU_SUB)) ||
               // 0 x inf
@@ -78,25 +81,25 @@ module fpu16
   always_comb begin
     unique case (op)
       FPU_ADD: begin
-        fpuOut = fpuAddOut;
+        fpuOut = (anyNaNs) ? `FP16_NAN : fpuAddOut;
         condCodes = addCondCodes;
         opStatusFlags = addStatusFlags;
       end
 
       FPU_SUB: begin
-        fpuOut = fpuSubOut;
+        fpuOut = (anyNaNs) ? `FP16_NAN : fpuSubOut;
         condCodes = subCondCodes;
         opStatusFlags = subStatusFlags;
       end
 
       FPU_MUL: begin
-        fpuOut = fpuMulOut;
+        fpuOut = (anyNaNs) ? `FP16_NAN : fpuMulOut;
         condCodes = mulCondCodes;
         opStatusFlags = mulStatusFlags;
       end
 
       FPU_DIV: begin
-        fpuOut = fpuDivOut;
+        fpuOut = (anyNaNs) ? `FP16_NAN : fpuDivOut;
         condCodes = divCondCodes;
         opStatusFlags = divStatusFlags;
       end

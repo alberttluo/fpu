@@ -64,7 +64,7 @@ module fpuMul16
                                 .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}),
                                 .done(sigMulDone));
 
-  assign sticky = sigMulOutFrac[`FP16_FRACW - 1:0] != '0;
+  assign sticky = sigMulOutFrac[`FP16_FRACW - 1:0] != `FP16_FRACW'd0;
   fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) mulNormalizer(.unnormSign(outSign), .unnormInt(sigMulOutInt),
                                                          .unnormFrac(sigMulOutFrac),
                                                          .unnormExp(denorm ? {`FP16_EXPW'd0} : unnormExp),

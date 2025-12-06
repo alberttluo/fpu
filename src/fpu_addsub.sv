@@ -63,9 +63,8 @@ module fpuAddSub16
   // Fields to build the unnormalized input.
   logic [1:0] intPart;
 
-  assign extLargeFrac = (largeNum.exp == '0) ? {1'b0, largeNum.frac, `FP16_FRACW'd0} :
-                                               {1'b1, largeNum.frac, `FP16_FRACW'd0};
-  assign extSmallFrac = {1'b0, alignedSmallNum.frac, shiftedOut};
+  assign extLargeFrac = {~(largeNum.exp == `FP16_EXPW'd0), largeNum.frac, `FP16_FRACW'd0};
+  assign extSmallFrac = {1'd0, alignedSmallNum.frac, shiftedOut};
 
   assign {intPart, fracSum} = (effSignLarge == effSignSmall) ?
                               (extLargeFrac + extSmallFrac) :
