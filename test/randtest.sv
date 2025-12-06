@@ -106,7 +106,7 @@ module fpuRandTest();
   string opStr, line;
   logic [15:0] in1;
   logic [15:0] in2;
-  logic [15:0] expected;
+  fp16_t expected;
 
   initial begin
     inFD = $fopen("randomOps.txt", "r");
