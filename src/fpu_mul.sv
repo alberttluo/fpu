@@ -53,7 +53,7 @@ module fpuMul16
 
   // Ensure that underflow from the above computation does not signal OF.
   assign denorm = (fpuIn1.exp + fpuIn2.exp) <= {expCarry, unnormExp};
-  assign OFin = ((expCarry & ~denorm) | unnormExp == {`FP16_EXPW{'1}});
+  assign OFin = ((expCarry & ~denorm) | unnormExp == {`FP16_EXPW{'1}} | unnormExp > `FP16_EXP_MAX);
 
   // Prepend implicit 1 or 0 based on exponent.
   assign sigMulIn1 = (fpuIn1.exp == '0) ? {1'b0, fpuIn1.frac} : {1'b1, fpuIn1.frac};
@@ -64,7 +64,7 @@ module fpuMul16
                                 .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}),
                                 .done(sigMulDone));
 
-  assign sticky = sigMulOutFrac[`FP16_FRACW - 1:0] != '0;
+  assign sticky = sigMulOutFrac[`FP16_FRACW - 1:0] != `FP16_FRACW'd0;
   fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) mulNormalizer(.unnormSign(outSign), .unnormInt(sigMulOutInt),
                                                          .unnormFrac(sigMulOutFrac),
                                                          .unnormExp(denorm ? {`FP16_EXPW'd0} : unnormExp),

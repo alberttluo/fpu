@@ -89,13 +89,17 @@ module fpuNormalizer16
 
   // Explicit op status flags.
   logic OF, UF, NX;
-  logic normOF;
-  assign OF = (normOF | OFin);
+  logic preRoundOF;
+  logic roundNormOF;
+  assign OF = (preRoundOF | roundNormOF | OFin);
   assign opStatusFlags = {OF, UF, NX};
 
   // Rounded exponent (may have to add 1 due to fractional rounding).
   logic [`FP16_EXPW - 1:0] roundedExp;
   logic [`FP16_EXPW - 1:0] preRoundExp;
+
+  // Denormalized detection.
+  logic denormalized = (unnormExp == `FP16_EXPW'd0 & ~OFin);
 
   // Post denormalized mantissa.
   logic [PFW - 1:0] postDenormFrac;
@@ -103,21 +107,23 @@ module fpuNormalizer16
   // Denormalized shift amount.
   logic [`FP16_FRACW - 1:0] denormShiftAmount;
 
+  // Rounding bits for both normal and denormal formats.
   logic guard, round;
+  logic denormGuard, denormRound;
 
   // Calcualte LZC (shifts).
   fpuLZC #(.WIDTH(PFW)) fpuMulLZC(.lzcIn(unnormFrac), .lzcOut(lzc));
 
   // Check if biased exponent is 0 (denormalized), so shift binary point left 1.
   always_comb begin
-    if (unnormExp == `FP16_EXPW'd0) begin
+    normOut.exp = OF ? {`FP16_FRACW{'1}} : roundedExp;
+    if (denormalized) begin
       postDenormFrac = explicitSig >> denormShiftAmount;
-      normOut.exp = `FP16_EXPW'd0;
-      normOut.frac = OF ? `FP16_FRACW'd0 : postDenormFrac[PFW - 1:PFW - `FP16_FRACW];
+      normOut.frac = OF ? `FP16_FRACW'd0 :
+                          postDenormFrac[PFW - 1:PFW - `FP16_FRACW] + (denormRound & (denormGuard | sticky));
     end
     else begin
       postDenormFrac = explicitSig[PFW - `FP16_FRACW:0];
-      normOut.exp = (OF ? {`FP16_FRACW{'1}} : roundedExp);
       normOut.frac = OF ? `FP16_FRACW'd0 : roundedFrac;
     end
   end
@@ -128,12 +134,20 @@ module fpuNormalizer16
     normOut.sign = unnormSign;
 
     // Default guard bit is the top bit in the extended part.
-    guard = 1'b0;
-    round = 1'b0;
+    guard = explicitSig[PFW - `FP16_FRACW];
+    round = explicitSig[PFW - `FP16_FRACW - 1];
+    denormGuard = postDenormFrac[PFW - `FP16_FRACW];
+    denormRound = postDenormFrac[PFW - `FP16_FRACW - 1];
+    preRoundOF = 1'b0;
     denormShiftAmount = (denormDiff + 1);
 
     if (unnormInt > 2'd1) begin
       preRoundExp = unnormExp + `FP16_EXPW'd1;
+
+      if (preRoundExp > `FP16_EXP_MAX) begin
+        preRoundOF = 1'b1;
+      end
+
       explicitSig = {unnormInt, unnormFrac} >> 1;
       denormShiftAmount--;
 
@@ -142,26 +156,27 @@ module fpuNormalizer16
     end
 
     else if (unnormInt == 2'b0) begin
-      preRoundExp = unnormExp - lzc;
-      explicitSig = {unnormInt, unnormFrac} << lzc;
+      if (lzc <= unnormExp) begin
+        preRoundExp = unnormExp - lzc;
+        explicitSig = {unnormInt, unnormFrac} << lzc;
+      end
 
-      guard = explicitSig[PFW - `FP16_FRACW];
-      round = explicitSig[PFW - `FP16_FRACW - 1];
+      else begin
+        preRoundExp = `FP16_EXPW'd0;
+        explicitSig = {unnormInt, unnormFrac};
+      end
     end
 
     else begin
       preRoundExp = unnormExp;
       explicitSig = {unnormInt, unnormFrac};
-
-      guard = unnormFrac[PFW - `FP16_FRACW];
-      round = unnormFrac[PFW - `FP16_FRACW - 1];
     end
   end
 
   // Rounding logic.
   always_comb begin
     roundedExp = preRoundExp;
-    normOF = 1'b0;
+    roundNormOF = 1'b0;
 
     // Round up case.
     if (round & (sticky | guard)) begin
@@ -172,18 +187,21 @@ module fpuNormalizer16
         // TODO: NaNs and infinites.
         roundedExp = preRoundExp + `FP16_EXPW'd1;
 
-        if (roundedExp == `FP16_EXPW'd0)
-          normOF = 1;
+        if (roundedExp == `FP16_EXPW'd0 || roundedExp > `FP16_EXP_MAX) begin
+          roundNormOF = 1;
+        end
       end
     end
 
     // Round to even case.
-    else if (guard & round & ~sticky)
+    else if (guard & round & ~sticky) begin
       roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] & 16'hFFFD;
+    end
 
     // Otherwise do nothing.
-    else
+    else begin
       roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW];
+    end
   end
 
   // Result is inexact if any shifted out bits are 1.
