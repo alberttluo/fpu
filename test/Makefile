@@ -3,12 +3,11 @@ GEN_SCRIPT := autotest.py
 NUM_OPS	   ?= 100
 VCS 	 		 := vcs -sverilog -q -debug
 SRCDIR 		 := ../src/
-SRC		 		 := $(wildcard $(SRCDIR)*.sv)
+SRC		 		 := $(SRCDIR)*.sv
 
 .PHONY: clean
 
-randtest:
-	$(PYTHON) $(GEN_SCRIPT) --nums=$(NUM_OPS);
+rand:
 	$(VCS) -o randtest +incdir+$(SRCDIR) randtest.sv $(SRC)
 
 test-%:
