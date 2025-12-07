@@ -28,5 +28,18 @@ All IEEE754 status flags are supported. They are
 
 The negative (N) and zero (Z) condition codes are also supported, though this is not according the IEEE754 protocol.
 
+## Testing
+The randomized test suite requires any version of Python3. To generate some random operations with random operands, simply run
+```python
+python3 autotest.py --nums=<number of operation sets>
+```
+Each set is a pair of operands which will be tested with all currently supported operations (add, subtract, multiply). To build the test, run
+```bash
+make rand
+```
+This generates the ```randtest``` executable, which will generate a two files:
+ * One that shows the outputs of each operation.
+ * One that shows all the valid, incorrect outputs. (Some wrong outputs are tolerated due to precision differences between this implementation and the IEEE754 standard).
+
 ## Progress
-I am currently working on some cleanup. There are some scattered bugs that should be fixed relatively quickly. More specifically, they have to do with the aligner, which must account for the difference in exponent calculation between denormalized and normalized floats. Besides that, all the basic operations, except division, have been implemented and tested (not thoroughly). Check out the [fix/cleanup](https://github.com/alberttluo/fpu/tree/fix/cleanup) branch for more up-to-date progress. 
+I finished some cleanup and all test cases are passing. I will move on to division next, which I anticipate will take quite some time to get correct. In the clean-up process, I also introduced randomized testing.
