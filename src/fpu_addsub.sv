@@ -80,9 +80,10 @@ module fpuAddSub16
 
   // Pack the fractional part along with largeNum fields to get unnormalized
   // value.
-  fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),  
+  fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),
                                                       .unnormFrac(fracSum),
-                                                      .unnormExp(largeNum.exp), .sticky,
+                                                      .unnormExp(largeNum.exp),
+                                                      .sticky,
                                                       .denormDiff(denormDiff + '1),
                                                       .OFin(1'b0), .normOut(normalizedOut),
                                                       .opStatusFlags);
