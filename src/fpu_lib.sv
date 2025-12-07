@@ -115,6 +115,9 @@ module fpuNormalizer16
   logic [PFW - 1:0] roundedPostDenormFrac;
   assign roundedPostDenormFrac = postDenormFrac;
 
+  // Shifted out integer part after denormalization.
+  logic [1:0] postDenormInt;
+
   // Denorm diff may be negative.
   logic [`FP16_FRACW - 1:0] absDenormDiff;
 
@@ -124,6 +127,7 @@ module fpuNormalizer16
   // Check if biased exponent is 0 (denormalized), so shift binary point left 1.
   always_comb begin
     normOut.exp = OF ? {`FP16_FRACW{'1}} : roundedExp;
+    postDenormInt = explicitSig[PFW + 1:PFW];
 
     if (denormalized) begin
       normOut.frac = OF ? `FP16_FRACW'd0 :
@@ -134,7 +138,7 @@ module fpuNormalizer16
       end
 
       else begin
-        postDenormFrac = explicitSig >> denormShiftAmount;
+        {postDenormInt, postDenormFrac} = explicitSig >> denormShiftAmount;
       end
     end
 
@@ -192,7 +196,9 @@ module fpuNormalizer16
 
   // Rounding logic.
   always_comb begin
-    roundedExp = (preRoundExp);
+    roundedExp = (denormalized && (postDenormInt != 2'd0)) ?
+                 `FP16_EXPW'd1 :
+                 preRoundExp;
     roundNormOF = 1'b0;
 
     // Round up case.
