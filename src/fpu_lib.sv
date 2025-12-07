@@ -99,7 +99,8 @@ module fpuNormalizer16
   logic [`FP16_EXPW - 1:0] preRoundExp;
 
   // Denormalized detection.
-  logic denormalized = (unnormExp == `FP16_EXPW'd0 & ~OFin);
+  logic denormalized;
+  assign denormalized = ((unnormExp == `FP16_EXPW'd0) & ~OFin);
 
   // Post denormalized mantissa.
   logic [PFW - 1:0] postDenormFrac;
@@ -111,17 +112,36 @@ module fpuNormalizer16
   logic guard, round;
   logic denormGuard, denormRound;
 
+  logic [PFW - 1:0] roundedPostDenormFrac;
+  assign roundedPostDenormFrac = postDenormFrac;
+
+  // Shifted out integer part after denormalization.
+  logic [1:0] postDenormInt;
+
+  // Denorm diff may be negative.
+  logic [`FP16_FRACW - 1:0] absDenormDiff;
+
   // Calcualte LZC (shifts).
   fpuLZC #(.WIDTH(PFW)) fpuMulLZC(.lzcIn(unnormFrac), .lzcOut(lzc));
 
   // Check if biased exponent is 0 (denormalized), so shift binary point left 1.
   always_comb begin
     normOut.exp = OF ? {`FP16_FRACW{'1}} : roundedExp;
+    postDenormInt = explicitSig[PFW + 1:PFW];
+
     if (denormalized) begin
-      postDenormFrac = explicitSig >> denormShiftAmount;
       normOut.frac = OF ? `FP16_FRACW'd0 :
-                          postDenormFrac[PFW - 1:PFW - `FP16_FRACW] + (denormRound & (denormGuard | sticky));
+                           roundedPostDenormFrac[PFW - 1:PFW - `FP16_FRACW] + (denormRound & (denormGuard | sticky));
+
+      if (denormDiff[`FP16_FRACW - 1]) begin
+        postDenormFrac = explicitSig << denormShiftAmount;
+      end
+
+      else begin
+        {postDenormInt, postDenormFrac} = explicitSig >> denormShiftAmount;
+      end
     end
+
     else begin
       postDenormFrac = explicitSig[PFW - `FP16_FRACW:0];
       normOut.frac = OF ? `FP16_FRACW'd0 : roundedFrac;
@@ -139,10 +159,11 @@ module fpuNormalizer16
     denormGuard = postDenormFrac[PFW - `FP16_FRACW];
     denormRound = postDenormFrac[PFW - `FP16_FRACW - 1];
     preRoundOF = 1'b0;
-    denormShiftAmount = (denormDiff + 1);
+    absDenormDiff = (denormDiff[`FP16_FRACW - 1]) ? ~(denormDiff) + `FP16_FRACW'd1 : denormDiff;
+    denormShiftAmount = (absDenormDiff + 1);
 
     if (unnormInt > 2'd1) begin
-      preRoundExp = unnormExp + `FP16_EXPW'd1;
+      preRoundExp = (denormalized) ? unnormExp : unnormExp + `FP16_EXPW'd1;
 
       if (preRoundExp > `FP16_EXP_MAX) begin
         preRoundOF = 1'b1;
@@ -175,7 +196,9 @@ module fpuNormalizer16
 
   // Rounding logic.
   always_comb begin
-    roundedExp = preRoundExp;
+    roundedExp = (denormalized && (postDenormInt != 2'd0)) ?
+                 `FP16_EXPW'd1 :
+                 preRoundExp;
     roundNormOF = 1'b0;
 
     // Round up case.
