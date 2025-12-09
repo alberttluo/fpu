@@ -42,4 +42,4 @@ This generates the ```randtest``` executable, which will generate a two files:
  * One that shows all the valid, incorrect outputs. (Some wrong outputs are tolerated due to precision differences between this implementation and the IEEE754 standard).
 
 ## Progress
-I finished some cleanup and all test cases are passing. I will move on to division next, which I anticipate will take quite some time to get correct. In the clean-up process, I also introduced randomized testing.
+I finished some cleanup and all test cases are passing. I will move on to division next, which I anticipate will take quite some time to get correct. In the clean-up process, I also introduced randomized testing. **There will likely be no progress this week due to finals.**
