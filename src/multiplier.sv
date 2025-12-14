@@ -14,9 +14,9 @@
 `include "library.sv"
 
 typedef enum logic[1:0] {
-  WAIT,
-  COMP,
-  DONE
+  MUL_WAIT,
+  MUL_COMP,
+  MUL_DONE
 } fpuMultiplyState_t;
 
 module fpuMultiplier16
@@ -77,7 +77,7 @@ module fpuMultiplierFSM
 
   always_ff @(posedge clock, posedge reset) begin
     if (reset) begin
-      currState <= WAIT;
+      currState <= MUL_WAIT;
     end
     else begin
       currState <= nextState;
@@ -88,15 +88,15 @@ module fpuMultiplierFSM
     compEn = 0;
     done = 0;
     unique case (currState)
-      WAIT: nextState = (start) ? COMP : WAIT;
+      MUL_WAIT: nextState = (start) ? MUL_COMP : MUL_WAIT;
 
-      COMP: begin
-        nextState = (compDone) ? DONE : COMP;
+      MUL_COMP: begin
+        nextState = (compDone) ? MUL_DONE : MUL_COMP;
         compEn = 1;
       end
 
-      DONE: begin
-        nextState = DONE;
+      MUL_DONE: begin
+        nextState = MUL_DONE;
         done = 1;
       end
     endcase

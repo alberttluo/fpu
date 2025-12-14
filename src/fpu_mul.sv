@@ -10,9 +10,9 @@
 `include "fpu_lib.sv"
 
 typedef enum logic [1:0] {
-  MUL_WAIT,
-  MUL_SIGCOMP,
-  MUL_DONE
+  FPMUL_WAIT,
+  FPMUL_SIGCOMP,
+  FPMUL_DONE
 } fpuMulState_t;
 
 module fpuMul16
@@ -90,7 +90,7 @@ module fpuMulFSM
 
   always_ff @(posedge clock, posedge reset) begin
     if (reset) begin
-      currState <= MUL_WAIT;
+      currState <= FPMUL_WAIT;
     end
 
     else begin
@@ -100,13 +100,13 @@ module fpuMulFSM
 
   always_comb begin
     unique case (currState)
-      MUL_WAIT: nextState = (start) ? MUL_SIGCOMP : MUL_WAIT;
+      FPMUL_WAIT: nextState = (start) ? FPMUL_SIGCOMP : FPMUL_WAIT;
 
-      MUL_SIGCOMP: nextState = (sigMulDone) ? MUL_DONE : MUL_SIGCOMP;
+      FPMUL_SIGCOMP: nextState = (sigMulDone) ? FPMUL_DONE : FPMUL_SIGCOMP;
 
-      MUL_DONE: nextState = MUL_DONE;
+      FPMUL_DONE: nextState = FPMUL_DONE;
     endcase
   end
 
-  assign done = (currState == MUL_DONE);
+  assign done = (currState == FPMUL_DONE);
 endmodule : fpuMulFSM
