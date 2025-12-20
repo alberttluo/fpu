@@ -9,8 +9,9 @@
 
 `include "constants.sv"
 
-typedef enum logic [1:0] {
+typedef enum logic [2:0] {
   FMAD_WAIT,
+  FMAD_MUL_KICK,
   FMAD_MUL,
   FMAD_ADD,
   FMAD_DONE
@@ -32,28 +33,23 @@ module fmad
   always_ff @(posedge clock) begin
     if (reset) begin
       fmadOut <= {WIDTH{1'b0}};
-      mulStart <= 1'b0;
-    end
-    
-    else if (start) begin
-      mulStart <= 1'b1;
     end
 
-    else if (fmadDone) begin
+    else if (fmadAddEn) begin
       fmadOut <= mulOut + {{WIDTH{1'b0}}, fmadAddIn};
     end
   end
 
-  fpuMultiplier16 multiplier(.mulIn1(fmadMulIn1), .mulIn2(fmadMulIn2),
-                             .start(mulStart), .clock, .reset, .mulOut,
-                             .done(mulDone));
+  fpuMultiplier #(.FRAC_WIDTH(WIDTH - 1)) multiplier(.mulIn1(fmadMulIn1), .mulIn2(fmadMulIn2),
+                                                     .start(mulStart), .clock, .reset, .mulOut,
+                                                     .done(mulDone));
 
   fmadFSM FSM(.*);
 endmodule : fmad
 
 module fmadFSM
   (input  logic start, mulDone, clock, reset,
-   output logic fmadAddEn, fmadDone);
+   output logic mulStart, fmadAddEn, fmadDone);
 
   fmadState_t currState, nextState;
 
@@ -67,20 +63,33 @@ module fmadFSM
   end
 
   always_comb begin
+    mulStart = 1'b0;
+    fmadAddEn = 1'b0;
+    fmadDone = 1'b0;
     unique case (currState)
-      FMAD_WAIT: nextState = (start) ? FMAD_MUL : FMAD_WAIT;
+      FMAD_WAIT: nextState = (start) ? FMAD_MUL_KICK : FMAD_WAIT;
 
-      FMAD_MUL: nextState = (mulDone) ? FMAD_DONE : FMAD_ADD;
+      FMAD_MUL_KICK: begin
+        nextState = FMAD_MUL;
+        mulStart = 1'b1;
+      end
+
+      FMAD_MUL: begin
+        nextState = (mulDone) ? FMAD_ADD : FMAD_MUL;
+      end
 
       // Allows one clock cycle for addition.
-      FMAD_ADD: nextState = FMAD_DONE;
+      FMAD_ADD: begin
+        nextState = FMAD_DONE;
+        fmadAddEn = 1'b1;
+      end
 
-      FMAD_DONE: nextState = FMAD_DONE;
+      FMAD_DONE: begin
+        nextState = FMAD_DONE;
+        fmadDone = 1'b1;
+      end
     endcase
   end
-
-  assign fmadDone = (currState == FMAD_DONE);
-  assign fmadAddEn = (currState == FMAD_ADD);
 endmodule : fmadFSM
 
 `endif

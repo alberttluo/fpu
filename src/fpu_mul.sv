@@ -60,9 +60,9 @@ module fpuMul16
   assign sigMulIn2 = (fpuIn2.exp == '0) ? {1'b0, fpuIn2.frac} : {1'b1, fpuIn2.frac};
 
   // Sequential multiplier to multiply significands.
-  fpuMultiplier16 sigMultiplier(.mulIn1(sigMulIn1), .mulIn2(sigMulIn2), .start,
-                                .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}),
-                                .done(sigMulDone));
+  fpuMultiplier sigMultiplier(.mulIn1(sigMulIn1), .mulIn2(sigMulIn2), .start,
+                              .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}),
+                              .done(sigMulDone));
 
   assign sticky = sigMulOutFrac[`FP16_FRACW - 1:0] != `FP16_FRACW'd0;
   fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) mulNormalizer(.unnormSign(outSign), .unnormInt(sigMulOutInt),
