@@ -20,7 +20,7 @@ typedef enum logic[1:0] {
 } fpuMultiplyState_t;
 
 module fpuMultiplier16
-  (input  logic[`FP16_FRACW:0] mulIn1, mulIn2,
+  (input  logic[`FP16_FRACW:0]     mulIn1, mulIn2,
    input  logic                    start,
    input  logic                    clock, reset,
    output logic[2 * `FP16_FRACW + 1:0] mulOut,
