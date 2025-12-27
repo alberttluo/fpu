@@ -3,7 +3,7 @@ import numpy as np
 from argparse import ArgumentParser
 
 FILE = "randomOps.txt"
-OPS = ["ADD", "SUB", "MUL"]
+OPS = ["ADD", "SUB", "MUL", "DIV"]
 
 def genRandomOperands(nums: int):
     opList = []
@@ -22,8 +22,11 @@ def genRandomOperands(nums: int):
                 outFloat = in1Float + in2Float
             elif (op == "SUB"):
                 outFloat = in1Float - in2Float
-            else:
+            elif (op == "MUL"):
                 outFloat = in1Float * in2Float
+            else:
+                if (in2Float != 0):
+                    outFloat = in1Float / in2Float
 
             outHex = outFloat.view(np.uint16)
             

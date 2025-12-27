@@ -13,7 +13,7 @@ module fpuRandTest();
   fp16_t       fpuIn1, fpuIn2;
   fpuOp_t      op;
   logic        clock, reset, start;
-  logic        mulDone;
+  logic        mulDone, divDone;
   fp16_t       fpuOut;
   condCode_t   condCodes;
   statusFlag_t statusFlags;
@@ -38,7 +38,7 @@ module fpuRandTest();
             line, correct ? "CORRECT" : "WRONG", expected, fpuOut,
             statusFlags.NV, statusFlags.DZ, statusFlags.OF, statusFlags.UF, statusFlags.NX);
 
-    // Only care about valid, but wrong results. 
+    // Only care about valid, but wrong results.
     if (!correct && !statusFlags.NV)
       $fwrite(outWrongFD, outputFormat,
               line, "WRONG", expected, fpuOut,
@@ -92,6 +92,28 @@ module fpuRandTest();
 
     // Hold result for two clock cycles.
     repeat (2) @(posedge clock);
+  endtask
+
+  task automatic doDiv
+    (input fp16_t in1,
+     input fp16_t in2);
+
+     reset <= 0;
+     #1;
+     reset <= 1;
+     #1;
+     reset <= 0;
+
+     fpuIn1 <= in1;
+     fpuIn2 <= in2;
+     op <= FPU_DIV;
+     start <= 1;
+     @(posedge clock);
+     start <= 0;
+
+     while (~divDone) @(posedge clock);
+
+     repeat (2) @(posedge clock);
   endtask
 
   // Clocking block.

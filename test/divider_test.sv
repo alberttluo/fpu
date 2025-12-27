@@ -13,6 +13,7 @@ module divider_test();
   logic [WIDTH - 1:0] divIn2;
   logic start, clock, reset;
   logic [WIDTH - 1:0] divOut;
+  logic [WIDTH - 1:0] divRem;
   logic done;
 
   fpuDivider #(.WIDTH(WIDTH)) DUT(.*);
@@ -35,8 +36,8 @@ module divider_test();
 
     while (~done) @(posedge clock);
 
-    $display("Result of %d / %d = %d.",
-             divIn1, divIn2, divOut);
+    $display("Result of %d (%b) / %d (%b) = %d (%b) with remainder %d (%b).",
+             divIn1, divIn1, divIn2, divIn2, divOut, divOut, divRem, divRem);
     assert(divOut == divIn1 / divIn2) else $display("Wrong answer.");
   endtask
 
