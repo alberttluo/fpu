@@ -46,7 +46,7 @@ endmodule : fpuAddSubAligner
 module fpuLZC
   #(parameter int WIDTH = 16,
               int OUTWIDTH = $clog2(WIDTH + 1))
-  (input  logic [WIDTH - 1:0]             lzcIn,
+  (input  logic [WIDTH - 1:0]    lzcIn,
    output logic [OUTWIDTH - 1:0] lzcOut);
 
   always_comb begin
@@ -57,6 +57,21 @@ module fpuLZC
     end
   end
 endmodule : fpuLZC
+
+module fpuTZC
+  #(parameter int WIDTH = 16,
+              int OUTWIDTH = $clog2(WIDTH + 1))
+  (input  logic [WIDTH - 1:0]    tzcIn,
+   output logic [OUTWIDTH - 1:0] tzcOut);
+
+  always_comb begin
+    tzcOut = 0;
+    for (int i = 0; i < WIDTH; i++) begin
+      if (tzcIn[i] && tzcOut == 0)
+        tzcOut = i;
+    end
+  end
+endmodule : fpuTZC
 
 /*
 * Normalizer for addition, subtaction, and multiplication.

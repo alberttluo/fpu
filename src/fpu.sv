@@ -14,6 +14,7 @@ module fpu16
    input  logic         clock, reset, start,
    output fp16_t        fpuOut,
    output logic         mulDone,
+   output logic         divDone,
    output condCode_t    condCodes,
    output statusFlag_t  statusFlags,
    output fpuComp_t     comps);
@@ -76,7 +77,9 @@ module fpu16
                          .condCodes(mulCondCodes), .opStatusFlags(mulStatusFlags),
                          .done(mulDone));
 
-  // TODO: Multiplier and divider.
+  fpuDiv #(.FP_T(fp16_t)) fpuDivider(.fpuIn1, .fpuIn2, .clock, .reset, .start,
+                                     .fpuOut(fpuDivOut), .done(divDone), .condCodes(divCondCodes),
+                                     .opStatusFlags(divStatusFlags));
 
   always_comb begin
     unique case (op)

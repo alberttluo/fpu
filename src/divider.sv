@@ -14,14 +14,16 @@ typedef enum logic [1:0] {
   DIV_WAIT,
   DIV_COMP,
   DIV_DONE
-} fpuDivState_t;
+} fpuDividerState_t;
 
 // Computes divIn1 / divIn2
 module fpuDivider
-  #(parameter int WIDTH = 16)
+  #(parameter int WIDTH = 16,
+    parameter int FRACW = 10)
   (input  logic [WIDTH - 1:0] divIn1, divIn2,
    input  logic               start, clock, reset,
    output logic [WIDTH - 1:0] divOut,
+   output logic [WIDTH - 1:0] divRem,
    output logic               done);
 
   // Counts number of iterations.
@@ -65,6 +67,7 @@ module fpuDivider
   assign nextPartialRem = (restore) ? (shiftedAQ[2 * WIDTH - 1:WIDTH]) : tempRemReg;
 
   assign divOut = remShiftReg[WIDTH - 1:0];
+  assign divRem = remShiftReg[2 * WIDTH - 1:WIDTH];
 
   // Append 1 bit to quotient if no overflow, otherwise restore.
   assign nextDivOut = {shiftedAQ[WIDTH - 1:1] , ~restore};
@@ -80,7 +83,7 @@ module fpuDividerFSM
   (input  logic clock, reset, compDone, start,
    output logic compEn, done);
 
-  fpuDivState_t currState, nextState;
+  fpuDividerState_t currState, nextState;
 
   always_ff @(posedge clock, posedge reset) begin
     if (reset) begin
