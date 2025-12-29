@@ -26,7 +26,7 @@ module fpuDiv
   localparam int EXPW = $bits(fpuIn1.exp);
   localparam int FRACW = $bits(fpuIn1.frac);
   localparam logic[EXPW - 1:0] BIAS = (EXPW == 5) ? 10'd15 : ((EXPW == 8) ? 23'd127 : 52'd1023);
-  localparam int EXP_MAX = (1 << EXPW) - 2;
+  localparam int unsigned EXP_MAX = (1 << EXPW) - 2;
 
   // Condition codes.
   logic Z, C, N, V;
@@ -90,7 +90,7 @@ module fpuDiv
                                                    .unnormInt,
                                                    .unnormFrac,
                                                    .unnormExp,
-                                                   .denormDiff(FRACW'(0)),
+                                                   .denormDiff(BIAS + (fpuIn1.exp - fpuIn2.exp)),
                                                    .sticky(1'b0),
                                                    .OFin,
                                                    .normOut(fpuOut),
