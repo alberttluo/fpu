@@ -25,7 +25,8 @@ module fpuDiv
 
   localparam int EXPW = $bits(fpuIn1.exp);
   localparam int FRACW = $bits(fpuIn1.frac);
-  localparam int BIAS = (EXPW == 5) ? 10'd15 : ((EXPW == 8) ? 23'd127 : 52'd1023);
+  localparam logic[EXPW - 1:0] BIAS = (EXPW == 5) ? 10'd15 : ((EXPW == 8) ? 23'd127 : 52'd1023);
+  localparam int EXP_MAX = (1 << EXPW) - 2;
 
   // Condition codes.
   logic Z, C, N, V;
@@ -42,28 +43,58 @@ module fpuDiv
   fpuTZC #(.WIDTH(FRACW)) tzc(.tzcIn(fpuIn2.frac), .tzcOut(divisorTZC));
 
   // Divide dividend significand by divisor fractional part.
+  logic [2 * FRACW - 1:0] adjustedDividend;
+  logic [2 * FRACW - 1:0] adjustedDivisor;
   logic [2 * FRACW - 1:0] significandDivOut;
-  logic [2 * FRACW - 1:0] significandDivRem;
+  logic [2 * FRACW - 1:0] divOutFrac;
   logic sigDivDone;
 
-  fpuDivider #(.WIDTH(2 * FRACW)) divider(.divIn1({dividendSig, {(FRACW-1){1'b0}}}), .divIn2(divisorSig >> divisorTZC),
+  assign adjustedDividend = {dividendSig, {(FRACW-1){1'b0}}};
+  assign adjustedDivisor = (divisorSig >> divisorTZC);
+
+  fpuDivider #(.WIDTH(2 * FRACW)) divider(.divIn1(adjustedDividend),
+                                          .divIn2(adjustedDivisor),
                                           .start, .clock, .reset,
                                           .divOut(significandDivOut),
-                                          .divRem(significandDivRem),
+                                          .divRem(),
                                           .done(sigDivDone));
 
   // Normalize and round output.
   logic outSign;
   assign outSign = fpuIn1.sign ^ fpuIn2.sign;
-  fpuNormalizer16 #(.PFW(FRACW)) divNormalizer(.unnormSign(outSign),
-                                                         .unnormInt(significandDivOut[FRACW + 1:FRACW]),
-                                                         .unnormFrac(significandDivOut[FRACW - 1:0]),
-                                                         .unnormExp(fpuIn1.exp - fpuIn2.exp + BIAS),
-                                                         .denormDiff(0),
-                                                         .sticky(1'b0),
-                                                         .OFin(1'b0),
-                                                         .normOut(fpuOut),
-                                                         .opStatusFlags);
+
+  logic [1:0] unnormInt;
+  logic [2 * FRACW - 1:0] unnormFrac;
+  logic expCarry;
+  logic denorm;
+  logic [EXPW - 1:0] unnormExp;
+
+  logic OFin;
+  
+  // Keep at 64-bit width to ensure overflow can never happen.
+  logic [63:0] intShiftAmt;
+  assign intShiftAmt = (FRACW + divisorTZC - 1);
+
+  assign unnormInt = significandDivOut >> intShiftAmt;
+
+  // Form the unnormalized fraction by taking the bits after the decimal point.
+  assign divOutFrac = significandDivOut & ((1 << (2 * FRACW - (divisorTZC + 1))) - 1);
+  assign unnormFrac = divOutFrac << (FRACW - divisorTZC + 1);
+
+  assign {expCarry, unnormExp} = fpuIn1.exp - fpuIn2.exp + BIAS;
+
+  // Ensure that underflow from the above computation does not signal OF.
+  assign denorm = ((fpuIn1.exp + fpuIn2.exp) <= {expCarry, unnormExp});
+  assign OFin = ((expCarry & ~denorm) | ~denorm & (unnormExp == {EXPW{'1}} | unnormExp > EXP_MAX));
+  fpuNormalizer16 #(.PFW(2 * FRACW)) divNormalizer(.unnormSign(outSign),
+                                                   .unnormInt,
+                                                   .unnormFrac,
+                                                   .unnormExp,
+                                                   .denormDiff(FRACW'(0)),
+                                                   .sticky(1'b0),
+                                                   .OFin,
+                                                   .normOut(fpuOut),
+                                                   .opStatusFlags);
 
   assign Z = (fpuOut == 0);
   assign C = 1'b0;
