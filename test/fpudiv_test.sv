@@ -37,8 +37,8 @@ module fpudiv_test();
 
     while (~done) @(posedge clock);
 
-    $display("Result of %h / %h = %h.",
-             fpuIn1, fpuIn2, fpuOut);
+    $display("Result of %h / %h = %h (%b  %b  %b).",
+             fpuIn1, fpuIn2, fpuOut, fpuOut.sign, fpuOut.exp, fpuOut.frac);
   endtask
 
   initial begin
@@ -53,6 +53,9 @@ module fpudiv_test();
   initial begin
     doDiv(16'h8FE3,
           16'hA3CC);
+    for (int i = 0; i < 100; i++) begin
+      doDiv(FP_T'($urandom), FP_T'($urandom));
+    end
 
     repeat (2) @(posedge clock);
     $finish;
