@@ -14,30 +14,33 @@
 * point inputs.
 */
 module fpuAddSubAligner
-  (input  fp16_t                    largeNum, smallNum,
-   output fp16_t                    alignedSmallNum,
-   output logic [`FP16_FRACW - 1:0] shiftedOut,
-   output logic                     sticky);
+  #(parameter type FP_T  = fp16_t,
+    parameter int  FRACW = 10,
+    parameter int  EXPW  = 5)
+  (input  FP_T                largeNum, smallNum,
+   output FP_T                alignedSmallNum,
+   output logic [FRACW - 1:0] shiftedOut,
+   output logic               sticky);
 
-  logic [`FP16_EXPW - 1:0] expDiff;
+  logic [EXPW - 1:0] expDiff;
 
   // Significand with explicit leading integer (2 bits).
-  logic [`FP16_FRACW + 1:0] extFrac;
+  logic [FRACW + 1:0] extFrac;
 
   always_comb begin
     // Exponent is 1 if denormalized -- not zero.
-    expDiff = (largeNum.exp == `FP16_EXPW'd0 ? `FP16_EXPW'd1 : largeNum.exp) - (smallNum.exp == `FP16_EXPW'd0 ? `FP16_EXPW'd1 : smallNum.exp);
+    expDiff = (largeNum.exp == EXPW'(0) ? EXPW'(1) : largeNum.exp) - (smallNum.exp == EXPW'(0) ? EXPW'(1) : smallNum.exp);
 
     // Effective sign -- flip if subtraction so we can always add.
     alignedSmallNum.sign = smallNum.sign;
 
-    {extFrac, shiftedOut} = {smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac, `FP16_FRACW'd0} >> expDiff;
+    {extFrac, shiftedOut} = {smallNum.exp != '0 ? 1'b1 : 1'b0, smallNum.frac, FRACW'(0)} >> expDiff;
 
     // TODO: Deal with NaNs.
     alignedSmallNum.exp = largeNum.exp;
-    alignedSmallNum.frac = extFrac[`FP16_FRACW - 1:0];
+    alignedSmallNum.frac = extFrac[FRACW - 1:0];
 
-    sticky = (shiftedOut != '0);
+    sticky = (shiftedOut != FRACW'(0));
   end
 endmodule : fpuAddSubAligner
 

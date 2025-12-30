@@ -70,7 +70,7 @@ module fpuDiv
   logic [EXPW - 1:0] unnormExp;
 
   logic OFin;
-  
+
   // Keep at 64-bit width to ensure overflow can never happen.
   logic [63:0] intShiftAmt;
   assign intShiftAmt = (FRACW + divisorTZC - 1);
