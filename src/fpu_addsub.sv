@@ -9,12 +9,16 @@
 `include "constants.sv"
 `include "fpu_lib.sv"
 
-module fpuAddSub16
+module fpuAddSub
+  #(parameter type FP_T = fp16_t)
   (input  logic          sub,
-   input  fp16_t         fpuIn1, fpuIn2,
-   output fp16_t         fpuOut,
+   input  FP_T           fpuIn1, fpuIn2,
+   output FP_T           fpuOut,
    output condCode_t     condCodes,
    output opStatusFlag_t opStatusFlags);
+
+  localparam int FRACW = $bits(fpuIn1.frac);
+  localparam int EXPW = $bits(fpuIn1.exp);
 
   // Explicit condition codes.
   logic Z, C, N, V;
@@ -30,8 +34,8 @@ module fpuAddSub16
   assign effS2 = fpuIn2.sign ^ sub;
 
   // Sort the numbers so that the larger magnitude number is on top.
-  fp16_t largeNum;
-  fp16_t smallNum;
+  FP_T largeNum;
+  FP_T smallNum;
   fpuAddSubSorter sorter(.*);
 
   // Effective signs after sorting.
@@ -49,22 +53,22 @@ module fpuAddSub16
   end
 
   // Bits that get shifted out from the aligner.
-  logic [`FP16_FRACW - 1:0] shiftedOut;
+  logic [FRACW - 1:0] shiftedOut;
 
   // Align binary points.
   fp16_t alignedSmallNum;
-  fpuAddSubAligner aligner(.*);
+  fpuAddSubAligner #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW)) aligner(.*);
 
   // Add significands (keep the shifted out bits from aligner).
-  logic [2 * `FP16_FRACW - 1:0] fracSum;
-  logic [2 * `FP16_FRACW:0] extLargeFrac;
-  logic [2 * `FP16_FRACW:0] extSmallFrac;
+  logic [2 * FRACW - 1:0] fracSum;
+  logic [2 * FRACW:0] extLargeFrac;
+  logic [2 * FRACW:0] extSmallFrac;
 
   // Fields to build the unnormalized input.
   logic [1:0] intPart;
 
-  assign extLargeFrac = {~(largeNum.exp == `FP16_EXPW'd0), largeNum.frac, `FP16_FRACW'd0};
-  assign extSmallFrac = {(alignedSmallNum == smallNum && smallNum.exp != `FP16_EXPW'd0), alignedSmallNum.frac, shiftedOut};
+  assign extLargeFrac = {~(largeNum.exp == 0), largeNum.frac, FRACW'(0)};
+  assign extSmallFrac = {(alignedSmallNum == smallNum && smallNum.exp != EXPW'(0)), alignedSmallNum.frac, shiftedOut};
 
   assign {intPart, fracSum} = (effSignLarge == effSignSmall) ?
                               (extLargeFrac + extSmallFrac) :
@@ -74,18 +78,18 @@ module fpuAddSub16
   fp16_t normalizedOut;
 
   // If denormalized, denormDiff is just lzc of fracSum.
-  logic [`FP16_FRACW - 1:0] denormDiff;
-  fpuLZC #(.WIDTH(2 * `FP16_FRACW)) LZC(.lzcIn(fracSum), .lzcOut(denormDiff));
+  logic [FRACW - 1:0] denormDiff;
+  fpuLZC #(.WIDTH(2 * FRACW)) LZC(.lzcIn(fracSum), .lzcOut(denormDiff));
 
 
   // Pack the fractional part along with largeNum fields to get unnormalized
   // value.
-  fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),
+  fpuNormalizer16 #(.PFW(2 * FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),
                                                       .unnormFrac(fracSum),
                                                       .unnormExp(largeNum.exp),
                                                       .sticky,
-                                                      .denormDiff(denormDiff + '1),
-                                                      .OFin(1'b0), 
+                                                      .denormDiff(denormDiff + 1),
+                                                      .OFin(1'b0),
                                                       .div(1'b0), .normOut(normalizedOut),
                                                       .opStatusFlags);
 
@@ -96,4 +100,4 @@ module fpuAddSub16
   assign V = 1'b0;
 
   assign fpuOut = normalizedOut;
-endmodule : fpuAddSub16
+endmodule : fpuAddSub

@@ -9,12 +9,15 @@
 `include "fpu_lib.sv"
 
 module fpuRandTest();
+  localparam type FP_T = fp16_t;
+  localparam int  WIDTH = $bits(fp16_t);
+
   // fpu16 signals.
-  fp16_t       fpuIn1, fpuIn2;
+  FP_T         fpuIn1, fpuIn2;
   fpuOp_t      op;
   logic        clock, reset, start;
   logic        mulDone, divDone;
-  fp16_t       fpuOut;
+  FP_T         fpuOut;
   condCode_t   condCodes;
   statusFlag_t statusFlags;
   fpuComp_t    comps;
@@ -26,12 +29,12 @@ module fpuRandTest();
 
   string outputFormat = "%s %s (expected %h, got %h) ---- NV(%b) DZ(%b) OF(%b) UF(%b) NX(%b)\n";
 
-  fpu16 DUT(.*);
+  fpu #(.FP_T(FP_T)) DUT(.*);
 
   // Helper task to write computed result to output file.
   task automatic writeOutput
     (input string line,
-     input fp16_t expected);
+     input FP_T expected);
     logic correct = (fpuOut == expected);
 
     $fwrite(outFD, outputFormat,
@@ -47,8 +50,8 @@ module fpuRandTest();
 
   // Multiplication helper test (waits for multiplication to be finished).
   task automatic doMultiply
-    (input fp16_t in1,
-     input fp16_t in2);
+    (input FP_T in1,
+     input FP_T in2);
     reset <= 0;
     #1;
     reset <= 1;
@@ -70,8 +73,8 @@ module fpuRandTest();
 
   // Addition helper.
   task automatic doAdd
-    (input fp16_t in1,
-     input fp16_t in2);
+    (input FP_T in1,
+     input FP_T in2);
 
     fpuIn1 <= in1;
     fpuIn2 <= in2;
@@ -83,8 +86,8 @@ module fpuRandTest();
 
   // Subtraction helper.
   task automatic doSub
-    (input fp16_t in1,
-     input fp16_t in2);
+    (input FP_T in1,
+     input FP_T in2);
 
     fpuIn1 <= in1;
     fpuIn2 <= in2;
@@ -95,8 +98,8 @@ module fpuRandTest();
   endtask
 
   task automatic doDiv
-    (input fp16_t in1,
-     input fp16_t in2);
+    (input FP_T in1,
+     input FP_T in2);
 
      reset <= 0;
      #1;
@@ -126,9 +129,9 @@ module fpuRandTest();
   end
 
   string opStr, line;
-  logic [15:0] in1;
-  logic [15:0] in2;
-  fp16_t expected;
+  logic [WIDTH - 1:0] in1;
+  logic [WIDTH - 1:0] in2;
+  FP_T expected;
 
   initial begin
     inFD = $fopen("randomOps.txt", "r");

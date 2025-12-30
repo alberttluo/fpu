@@ -8,11 +8,12 @@
 `include "constants.sv"
 
 //TODO: Make parameterized.
-module fpu16
-  (input  fp16_t        fpuIn1, fpuIn2,
+module fpu
+  #(parameter type FP_T = fp16_t)
+  (input  FP_T          fpuIn1, fpuIn2,
    input  fpuOp_t       op,
    input  logic         clock, reset, start,
-   output fp16_t        fpuOut,
+   output FP_T          fpuOut,
    output logic         mulDone,
    output logic         divDone,
    output condCode_t    condCodes,
@@ -20,10 +21,10 @@ module fpu16
    output fpuComp_t     comps);
 
   // Operation outputs.
-  fp16_t fpuAddOut;
-  fp16_t fpuSubOut;
-  fp16_t fpuMulOut;
-  fp16_t fpuDivOut;
+  FP_T fpuAddOut;
+  FP_T fpuSubOut;
+  FP_T fpuMulOut;
+  FP_T fpuDivOut;
 
   // Condition codes set by operations.
   condCode_t addCondCodes;
@@ -67,17 +68,18 @@ module fpu16
 
   fpuComp16 fpuComp(.*);
 
-  fpuAddSub16 fpuAdder(.sub(1'b0), .fpuIn1, .fpuIn2, .fpuOut(fpuAddOut),
-                       .condCodes(addCondCodes), .opStatusFlags(addStatusFlags));
-  fpuAddSub16 fpuSubtracter(.sub(1'b1), .fpuIn1, .fpuIn2, .fpuOut(fpuSubOut),
-                            .condCodes(subCondCodes), .opStatusFlags(subStatusFlags));
+  fpuAddSub #(.FP_T(FP_T)) fpuAdder(.sub(1'b0), .fpuIn1, .fpuIn2, .fpuOut(fpuAddOut),
+                                    .condCodes(addCondCodes), .opStatusFlags(addStatusFlags));
+
+  fpuAddSub #(.FP_T(FP_T)) fpuSubtracter(.sub(1'b1), .fpuIn1, .fpuIn2, .fpuOut(fpuSubOut),
+                                         .condCodes(subCondCodes), .opStatusFlags(subStatusFlags));
 
   // TODO: Create FSM to wait for multiplication to finish.
   fpuMul16 fpuMultiplier(.fpuIn1, .fpuIn2, .clock, .reset, .start, .fpuOut(fpuMulOut),
                          .condCodes(mulCondCodes), .opStatusFlags(mulStatusFlags),
                          .done(mulDone));
 
-  fpuDiv #(.FP_T(fp16_t)) fpuDivider(.fpuIn1, .fpuIn2, .clock, .reset, .start,
+  fpuDiv #(.FP_T(FP_T)) fpuDivider(.fpuIn1, .fpuIn2, .clock, .reset, .start,
                                      .fpuOut(fpuDivOut), .done(divDone), .condCodes(divCondCodes),
                                      .opStatusFlags(divStatusFlags));
 
@@ -108,4 +110,4 @@ module fpu16
       end
     endcase
   end
-endmodule : fpu16
+endmodule : fpu
