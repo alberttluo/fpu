@@ -70,7 +70,7 @@ module fpuMul16
                                                          .unnormExp(denorm ? {`FP16_EXPW'd0} : unnormExp),
                                                          .denormDiff(`FP16_BIAS - (fpuIn1.exp + fpuIn2.exp)),
                                                          .sticky,
-                                                         .OFin, .normOut(fpuOut),
+                                                         .OFin, .div(1'b0), .normOut(fpuOut),
                                                          .opStatusFlags);
 
   // TODO: Fix C and V.
