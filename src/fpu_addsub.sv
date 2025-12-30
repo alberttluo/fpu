@@ -10,15 +10,15 @@
 `include "fpu_lib.sv"
 
 module fpuAddSub
-  #(parameter type FP_T = fp16_t)
+  #(parameter type FP_T = fp16_t,
+    parameter int FRACW = 10,
+    parameter int EXPW = 5,
+    parameter int BIAS = 15)
   (input  logic          sub,
    input  FP_T           fpuIn1, fpuIn2,
    output FP_T           fpuOut,
    output condCode_t     condCodes,
    output opStatusFlag_t opStatusFlags);
-
-  localparam int FRACW = $bits(fpuIn1.frac);
-  localparam int EXPW = $bits(fpuIn1.exp);
 
   // Explicit condition codes.
   logic Z, C, N, V;

@@ -1,6 +1,5 @@
 /*
-* fpu.sv: Top, system module of the FPU. Supports 4 different operations,
-* currently only for half-precision (FP16).
+* fpu.sv: Top, system module of the FPU.
 *
 * Author: Albert Luo (albertlu at cmu dot edu)
 */
@@ -19,6 +18,10 @@ module fpu
    output condCode_t    condCodes,
    output statusFlag_t  statusFlags,
    output fpuComp_t     comps);
+
+  localparam int FRACW = $bits(fpuIn1.frac);
+  localparam int EXPW = $bits(fpuIn1.exp);
+  localparam int BIAS = (1 << (EXPW - 1)) - 1;
 
   // Operation outputs.
   FP_T fpuAddOut;
@@ -51,11 +54,11 @@ module fpu
               // Opposite signed infinites add/sub.
               (isInf1 && isInf2 && (fpuIn1.sign ^ fpuIn2.sign) && (op == FPU_ADD || op == FPU_SUB)) ||
               // 0 x inf
-              ((op == FPU_MUL) && (isInf1 && fpuIn2 == 16'd0) || (isInf2 && fpuIn1 == 16'd0)) ||
+              ((op == FPU_MUL) && (isInf1 && fpuIn2 == 0) || (isInf2 && fpuIn1 == 0)) ||
               // inf/inf
               ((op == FPU_DIV) && (isInf1 && isInf2));
 
-  assign DZ = (op == FPU_DIV && {fpuIn2.exp, fpuIn2.frac} == 15'd0);
+  assign DZ = (op == FPU_DIV && {fpuIn2.exp, fpuIn2.frac} == 0);
 
   opStatusFlag_t addStatusFlags;
   opStatusFlag_t subStatusFlags;
@@ -75,13 +78,15 @@ module fpu
                                          .condCodes(subCondCodes), .opStatusFlags(subStatusFlags));
 
   // TODO: Create FSM to wait for multiplication to finish.
-  fpuMul16 fpuMultiplier(.fpuIn1, .fpuIn2, .clock, .reset, .start, .fpuOut(fpuMulOut),
-                         .condCodes(mulCondCodes), .opStatusFlags(mulStatusFlags),
-                         .done(mulDone));
+  fpuMul #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .BIAS(BIAS))
+         fpuMultiplier(.fpuIn1, .fpuIn2, .clock, .reset, .start, .fpuOut(fpuMulOut),
+                       .condCodes(mulCondCodes), .opStatusFlags(mulStatusFlags),
+                       .done(mulDone));
 
-  fpuDiv #(.FP_T(FP_T)) fpuDivider(.fpuIn1, .fpuIn2, .clock, .reset, .start,
-                                     .fpuOut(fpuDivOut), .done(divDone), .condCodes(divCondCodes),
-                                     .opStatusFlags(divStatusFlags));
+  fpuDiv #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .BIAS(BIAS))
+         fpuDivider(.fpuIn1, .fpuIn2, .clock, .reset, .start,
+                    .fpuOut(fpuDivOut), .done(divDone), .condCodes(divCondCodes),
+                    .opStatusFlags(divStatusFlags));
 
   always_comb begin
     unique case (op)
