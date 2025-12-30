@@ -85,7 +85,7 @@ module fpuDiv
 
   // Ensure that underflow from the above computation does not signal OF.
   assign denorm = ((fpuIn1.exp + fpuIn2.exp) <= {expCarry, unnormExp});
-  assign OFin = ((expCarry & ~denorm) | ~denorm & (unnormExp == {EXPW{'1}} | unnormExp > EXP_MAX));
+  assign OFin = ((expCarry & ~denorm) | ~denorm & (unnormExp == {EXPW{1'b1}} | unnormExp > EXP_MAX));
   fpuNormalizer16 #(.PFW(2 * FRACW)) divNormalizer(.unnormSign(outSign),
                                                    .unnormInt,
                                                    .unnormFrac,
@@ -95,7 +95,6 @@ module fpuDiv
                                                    .OFin, .div(1'b1),
                                                    .normOut(fpuOut),
                                                    .opStatusFlags);
-                                                   
 
   assign Z = (fpuOut == 0);
   assign C = 1'b0;
