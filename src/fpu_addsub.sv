@@ -85,7 +85,8 @@ module fpuAddSub16
                                                       .unnormExp(largeNum.exp),
                                                       .sticky,
                                                       .denormDiff(denormDiff + '1),
-                                                      .OFin(1'b0), .normOut(normalizedOut),
+                                                      .OFin(1'b0), 
+                                                      .div(1'b0), .normOut(normalizedOut),
                                                       .opStatusFlags);
 
   // Set condition codes.

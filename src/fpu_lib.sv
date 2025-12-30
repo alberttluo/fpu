@@ -88,6 +88,7 @@ module fpuNormalizer16
    input  logic [`FP16_FRACW - 1:0] denormDiff,
    input  logic                     sticky,
    input  logic                     OFin,
+   input  logic                     div,
    output fp16_t                    normOut,
    output opStatusFlag_t            opStatusFlags);
 
@@ -149,11 +150,11 @@ module fpuNormalizer16
                            roundedPostDenormFrac[PFW - 1:PFW - `FP16_FRACW] + (denormRound & (denormGuard | sticky));
 
       if (denormDiff[`FP16_FRACW - 1]) begin
-        postDenormFrac = explicitSig << denormShiftAmount;
+        {postDenormInt, postDenormFrac} = (div) ? explicitSig >> denormShiftAmount : explicitSig << denormShiftAmount;
       end
 
       else begin
-        {postDenormInt, postDenormFrac} = explicitSig >> denormShiftAmount;
+        {postDenormInt, postDenormFrac} = (div) ? explicitSig << denormShiftAmount : explicitSig >> denormShiftAmount;
       end
     end
 

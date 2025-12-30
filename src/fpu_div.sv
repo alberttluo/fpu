@@ -89,12 +89,13 @@ module fpuDiv
   fpuNormalizer16 #(.PFW(2 * FRACW)) divNormalizer(.unnormSign(outSign),
                                                    .unnormInt,
                                                    .unnormFrac,
-                                                   .unnormExp,
+                                                   .unnormExp(denorm ? EXPW'(0) : unnormExp),
                                                    .denormDiff(BIAS + (fpuIn1.exp - fpuIn2.exp)),
                                                    .sticky(1'b0),
-                                                   .OFin,
+                                                   .OFin, .div(1'b1),
                                                    .normOut(fpuOut),
                                                    .opStatusFlags);
+                                                   
 
   assign Z = (fpuOut == 0);
   assign C = 1'b0;
