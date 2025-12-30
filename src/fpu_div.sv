@@ -15,7 +15,10 @@ typedef enum logic [1:0] {
 } fpuDivState_t;
 
 module fpuDiv
-  #(parameter type FP_T = fp16_t)
+  #(parameter type FP_T = fp16_t,
+    parameter int FRACW = 10,
+    parameter int EXPW = 5,
+    parameter int BIAS = 15)
   (input  FP_T           fpuIn1, fpuIn2,
    input  logic          clock, reset, start,
    output FP_T           fpuOut,
@@ -23,9 +26,6 @@ module fpuDiv
    output condCode_t     condCodes,
    output opStatusFlag_t opStatusFlags);
 
-  localparam int EXPW = $bits(fpuIn1.exp);
-  localparam int FRACW = $bits(fpuIn1.frac);
-  localparam logic[EXPW - 1:0] BIAS = (EXPW == 5) ? 10'd15 : ((EXPW == 8) ? 23'd127 : 52'd1023);
   localparam int unsigned EXP_MAX = (1 << EXPW) - 2;
 
   // Condition codes.

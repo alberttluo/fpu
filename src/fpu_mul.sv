@@ -15,20 +15,26 @@ typedef enum logic [1:0] {
   FPMUL_DONE
 } fpuMulState_t;
 
-module fpuMul16
-  (input  fp16_t         fpuIn1, fpuIn2,
+module fpuMul
+  #(parameter type FP_T = fp16_t,
+    parameter int FRACW = 10,
+    parameter int EXPW = 5,
+    parameter int BIAS = 15)
+  (input  FP_T           fpuIn1, fpuIn2,
    input  logic          clock, reset, start,
-   output fp16_t         fpuOut,
+   output FP_T           fpuOut,
    output logic          done,
    output condCode_t     condCodes,
    output opStatusFlag_t opStatusFlags);
 
+  localparam int unsigned EXP_MAX = (1 << EXPW) - 2;
+
   // Significand multiplication signals.
   logic [1:0] sigMulOutInt;
-  logic [2 * `FP16_FRACW - 1:0] sigMulOutFrac;
+  logic [2 * FRACW - 1:0] sigMulOutFrac;
   logic sigMulDone;
-  logic [`FP16_FRACW:0] sigMulIn1;
-  logic [`FP16_FRACW:0] sigMulIn2;
+  logic [FRACW:0] sigMulIn1;
+  logic [FRACW:0] sigMulIn2;
 
   // Output sign determined solely by input signs.
   logic outSign;
@@ -37,7 +43,7 @@ module fpuMul16
   logic sticky;
 
   // Normalization fields.
-  logic [`FP16_EXPW - 1:0] unnormExp;
+  logic [EXPW - 1:0] unnormExp;
 
   // Explicit condition codes.
   logic Z, C, N, V;
@@ -49,11 +55,11 @@ module fpuMul16
   logic OFin;
   logic expCarry;
   logic denorm;
-  assign {expCarry, unnormExp} = fpuIn1.exp + fpuIn2.exp - `FP16_BIAS;
+  assign {expCarry, unnormExp} = fpuIn1.exp + fpuIn2.exp - BIAS;
 
   // Ensure that underflow from the above computation does not signal OF.
   assign denorm = ((fpuIn1.exp + fpuIn2.exp) <= {expCarry, unnormExp});
-  assign OFin = ((expCarry & ~denorm) | ~denorm & (unnormExp == {`FP16_EXPW{1'b1}} | unnormExp > `FP16_EXP_MAX));
+  assign OFin = ((expCarry & ~denorm) | ~denorm & (unnormExp == {EXPW{1'b1}} | unnormExp > EXP_MAX));
 
   // Prepend implicit 1 or 0 based on exponent.
   assign sigMulIn1 = (fpuIn1.exp == '0) ? {1'b0, fpuIn1.frac} : {1'b1, fpuIn1.frac};
@@ -64,11 +70,11 @@ module fpuMul16
                               .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}),
                               .done(sigMulDone));
 
-  assign sticky = sigMulOutFrac[`FP16_FRACW - 1:0] != `FP16_FRACW'd0;
-  fpuNormalizer16 #(.PFW(2 * `FP16_FRACW)) mulNormalizer(.unnormSign(outSign), .unnormInt(sigMulOutInt),
+  assign sticky = sigMulOutFrac[FRACW - 1:0] != 0;
+  fpuNormalizer16 #(.PFW(2 * FRACW)) mulNormalizer(.unnormSign(outSign), .unnormInt(sigMulOutInt),
                                                          .unnormFrac(sigMulOutFrac),
-                                                         .unnormExp(denorm ? {`FP16_EXPW'd0} : unnormExp),
-                                                         .denormDiff(`FP16_BIAS - (fpuIn1.exp + fpuIn2.exp)),
+                                                         .unnormExp(denorm ? 0 : unnormExp),
+                                                         .denormDiff(BIAS - (fpuIn1.exp + fpuIn2.exp)),
                                                          .sticky,
                                                          .OFin, .div(1'b0), .normOut(fpuOut),
                                                          .opStatusFlags);
@@ -79,7 +85,7 @@ module fpuMul16
   assign N = fpuOut.sign;
   assign V = 1'b0;
   fpuMulFSM FSM(.*);
-endmodule : fpuMul16
+endmodule : fpuMul
 
 module fpuMulFSM
   (input  logic start, sigMulDone,
