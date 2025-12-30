@@ -4,14 +4,17 @@
 * Author: Albert Luo (albertlu at cmu dot edu)
 */
 
-module fpuComp16
-  (input  fp16_t fpuIn1, fpuIn2,
+module fpuComp
+  #(parameter type FP_T = fp16_t)
+  (input  FP_T   fpuIn1, fpuIn2,
    input  logic  isInf1, isInf2,
    input  logic  isNaN1, isNaN2,
    output logic  lt, eq, gt);
 
-  logic [14:0] mag1;
-  logic [14:0] mag2;
+  localparam int MAG_WIDTH = $bits(fpuIn1) - 1;
+
+  logic [MAG_WIDTH - 1:0] mag1;
+  logic [MAG_WIDTH - 1:0] mag2;
   logic magLt;
   logic magGt;
 
@@ -39,4 +42,4 @@ module fpuComp16
                // Greater than always true if fpuIn1 = inf, unless fpuIn2 = inf
                // as well, in which case greater than is false.
                (isInf1 & ~fpuIn1.sign)) & noNaNs & ~(isInf2 & ~fpuIn2.sign);
-endmodule : fpuComp16
+endmodule : fpuComp

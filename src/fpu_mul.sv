@@ -19,6 +19,7 @@ module fpuMul
   #(parameter type FP_T = fp16_t,
     parameter int FRACW = 10,
     parameter int EXPW = 5,
+    parameter int EXP_MAX = (1 << EXPW) - 1,
     parameter int BIAS = 15)
   (input  FP_T           fpuIn1, fpuIn2,
    input  logic          clock, reset, start,
@@ -26,8 +27,6 @@ module fpuMul
    output logic          done,
    output condCode_t     condCodes,
    output opStatusFlag_t opStatusFlags);
-
-  localparam int unsigned EXP_MAX = (1 << EXPW) - 2;
 
   // Significand multiplication signals.
   logic [1:0] sigMulOutInt;
@@ -71,13 +70,14 @@ module fpuMul
                               .done(sigMulDone));
 
   assign sticky = sigMulOutFrac[FRACW - 1:0] != 0;
-  fpuNormalizer16 #(.PFW(2 * FRACW)) mulNormalizer(.unnormSign(outSign), .unnormInt(sigMulOutInt),
-                                                         .unnormFrac(sigMulOutFrac),
-                                                         .unnormExp(denorm ? 0 : unnormExp),
-                                                         .denormDiff(BIAS - (fpuIn1.exp + fpuIn2.exp)),
-                                                         .sticky,
-                                                         .OFin, .div(1'b0), .normOut(fpuOut),
-                                                         .opStatusFlags);
+  fpuNormalizer #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .EXP_MAX(EXP_MAX), .PFW(2 * FRACW))
+                mulNormalizer(.unnormSign(outSign), .unnormInt(sigMulOutInt),
+                              .unnormFrac(sigMulOutFrac),
+                              .unnormExp(denorm ? EXPW'(0) : unnormExp),
+                              .denormDiff(EXPW'(BIAS) - (fpuIn1.exp + fpuIn2.exp)),
+                              .sticky,
+                              .OFin, .div(1'b0), .normOut(fpuOut),
+                              .opStatusFlags);
 
   // TODO: Fix C and V.
   assign Z = (fpuOut == '0);

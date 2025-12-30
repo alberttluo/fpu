@@ -19,9 +19,14 @@ module fpu
    output statusFlag_t  statusFlags,
    output fpuComp_t     comps);
 
+  localparam int WIDTH = $bits(FP_T);
   localparam int FRACW = $bits(fpuIn1.frac);
   localparam int EXPW = $bits(fpuIn1.exp);
+  localparam int EXP_MAX = (1 << EXPW) - 2;
   localparam int BIAS = (1 << (EXPW - 1)) - 1;
+
+  localparam logic [WIDTH - 1:0] NAN = (WIDTH == 16) ? `FP16_NAN :
+                                       ((WIDTH == 32) ? `FP32_NAN : `FP64_NAN);
 
   // Operation outputs.
   FP_T fpuAddOut;
@@ -37,7 +42,8 @@ module fpu
 
   // Special value logic.
   logic isInf1, isInf2, isNaN1, isNaN2;
-  fpuIsSpecialValue specVal1(.fpuIn(fpuIn1), .inf(isInf1), .nan(isNaN1)),
+  fpuIsSpecialValue #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW))
+                    specVal1(.fpuIn(fpuIn1), .inf(isInf1), .nan(isNaN1)),
                     specval2(.fpuIn(fpuIn2), .inf(isInf2), .nan(isNaN2));
 
   logic anyNaNs;
@@ -69,21 +75,21 @@ module fpu
   logic lt, eq, gt;
   assign comps = {lt, eq, gt};
 
-  fpuComp16 fpuComp(.*);
+  fpuComp #(.FP_T(FP_T)) fpuComp(.*);
 
-  fpuAddSub #(.FP_T(FP_T)) fpuAdder(.sub(1'b0), .fpuIn1, .fpuIn2, .fpuOut(fpuAddOut),
-                                    .condCodes(addCondCodes), .opStatusFlags(addStatusFlags));
-
-  fpuAddSub #(.FP_T(FP_T)) fpuSubtracter(.sub(1'b1), .fpuIn1, .fpuIn2, .fpuOut(fpuSubOut),
-                                         .condCodes(subCondCodes), .opStatusFlags(subStatusFlags));
+  fpuAddSub #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .EXP_MAX(EXP_MAX), .BIAS(BIAS)) 
+            fpuAdder(.sub(1'b0), .fpuIn1, .fpuIn2, .fpuOut(fpuAddOut),
+                     .condCodes(addCondCodes), .opStatusFlags(addStatusFlags)),
+            fpuSubtracter(.sub(1'b1), .fpuIn1, .fpuIn2, .fpuOut(fpuSubOut),
+                          .condCodes(subCondCodes), .opStatusFlags(subStatusFlags));
 
   // TODO: Create FSM to wait for multiplication to finish.
-  fpuMul #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .BIAS(BIAS))
+  fpuMul #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .EXP_MAX(EXP_MAX), .BIAS(BIAS))
          fpuMultiplier(.fpuIn1, .fpuIn2, .clock, .reset, .start, .fpuOut(fpuMulOut),
                        .condCodes(mulCondCodes), .opStatusFlags(mulStatusFlags),
                        .done(mulDone));
 
-  fpuDiv #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .BIAS(BIAS))
+  fpuDiv #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .EXP_MAX(EXP_MAX), .BIAS(BIAS))
          fpuDivider(.fpuIn1, .fpuIn2, .clock, .reset, .start,
                     .fpuOut(fpuDivOut), .done(divDone), .condCodes(divCondCodes),
                     .opStatusFlags(divStatusFlags));
@@ -91,25 +97,25 @@ module fpu
   always_comb begin
     unique case (op)
       FPU_ADD: begin
-        fpuOut = (anyNaNs) ? `FP16_NAN : fpuAddOut;
+        fpuOut = (anyNaNs) ? NAN : fpuAddOut;
         condCodes = addCondCodes;
         opStatusFlags = addStatusFlags;
       end
 
       FPU_SUB: begin
-        fpuOut = (anyNaNs) ? `FP16_NAN : fpuSubOut;
+        fpuOut = (anyNaNs) ? NAN : fpuSubOut;
         condCodes = subCondCodes;
         opStatusFlags = subStatusFlags;
       end
 
       FPU_MUL: begin
-        fpuOut = (anyNaNs) ? `FP16_NAN : fpuMulOut;
+        fpuOut = (anyNaNs) ? NAN : fpuMulOut;
         condCodes = mulCondCodes;
         opStatusFlags = mulStatusFlags;
       end
 
       FPU_DIV: begin
-        fpuOut = (anyNaNs) ? `FP16_NAN : fpuDivOut;
+        fpuOut = (anyNaNs) ? NAN : fpuDivOut;
         condCodes = divCondCodes;
         opStatusFlags = divStatusFlags;
       end
