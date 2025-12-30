@@ -13,6 +13,7 @@ module fpuAddSub
   #(parameter type FP_T = fp16_t,
     parameter int FRACW = 10,
     parameter int EXPW = 5,
+    parameter int EXP_MAX = (1 << EXPW) - 2,
     parameter int BIAS = 15)
   (input  logic          sub,
    input  FP_T           fpuIn1, fpuIn2,
@@ -36,7 +37,7 @@ module fpuAddSub
   // Sort the numbers so that the larger magnitude number is on top.
   FP_T largeNum;
   FP_T smallNum;
-  fpuAddSubSorter sorter(.*);
+  fpuAddSubSorter #(.FP_T(FP_T)) sorter(.*);
 
   // Effective signs after sorting.
   logic effSignLarge, effSignSmall;
@@ -78,20 +79,20 @@ module fpuAddSub
   fp16_t normalizedOut;
 
   // If denormalized, denormDiff is just lzc of fracSum.
-  logic [FRACW - 1:0] denormDiff;
+  logic [EXPW - 1:0] denormDiff;
   fpuLZC #(.WIDTH(2 * FRACW)) LZC(.lzcIn(fracSum), .lzcOut(denormDiff));
-
 
   // Pack the fractional part along with largeNum fields to get unnormalized
   // value.
-  fpuNormalizer16 #(.PFW(2 * FRACW)) normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),
-                                                      .unnormFrac(fracSum),
-                                                      .unnormExp(largeNum.exp),
-                                                      .sticky,
-                                                      .denormDiff(denormDiff + 1),
-                                                      .OFin(1'b0),
-                                                      .div(1'b0), .normOut(normalizedOut),
-                                                      .opStatusFlags);
+  fpuNormalizer #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .EXP_MAX(EXP_MAX), .PFW(2 * FRACW))
+                normalizer(.unnormSign(effSignLarge), .unnormInt(intPart),
+                           .unnormFrac(fracSum),
+                           .unnormExp(largeNum.exp),
+                           .sticky,
+                           .denormDiff(denormDiff + EXPW'(1)),
+                           .OFin(1'b0),
+                           .div(1'b0), .normOut(normalizedOut),
+                           .opStatusFlags);
 
   // Set condition codes.
   assign Z = (normalizedOut == '0);

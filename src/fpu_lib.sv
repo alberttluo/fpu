@@ -80,15 +80,19 @@ endmodule : fpuTZC
 * Normalizer for addition, subtaction, and multiplication.
 * Currently only supports half-precision.
 */
-module fpuNormalizer16
+module fpuNormalizer
   // Paramterized by pure fractional width before truncation and not including
   // the leading integer part.
-  #(parameter int PFW = 10)
+  #(parameter type FP_T = fp16_t,
+    parameter int FRACW = 10,
+    parameter int EXPW = 5,
+    parameter int EXP_MAX = 30,
+    parameter int PFW = 10)
   (input  logic                     unnormSign,
    input  logic [1:0]               unnormInt,
    input  logic [PFW - 1:0]         unnormFrac,
-   input  logic [`FP16_EXPW - 1:0]  unnormExp,
-   input  logic [`FP16_FRACW - 1:0] denormDiff,
+   input  logic [EXPW - 1:0]        unnormExp,
+   input  logic [EXPW - 1:0]        denormDiff,
    input  logic                     sticky,
    input  logic                     OFin,
    input  logic                     div,
@@ -104,7 +108,7 @@ module fpuNormalizer16
   logic [PFW + 1:0] explicitSig;
 
   // Mantissa after rounding.
-  logic [`FP16_FRACW - 1:0] roundedFrac;
+  logic [FRACW - 1:0] roundedFrac;
 
   // Explicit op status flags.
   logic OF, UF, NX;
@@ -114,18 +118,18 @@ module fpuNormalizer16
   assign opStatusFlags = {OF, UF, NX};
 
   // Rounded exponent (may have to add 1 due to fractional rounding).
-  logic [`FP16_EXPW - 1:0] roundedExp;
-  logic [`FP16_EXPW - 1:0] preRoundExp;
+  logic [EXPW - 1:0] roundedExp;
+  logic [EXPW - 1:0] preRoundExp;
 
   // Denormalized detection.
   logic denormalized;
-  assign denormalized = ((unnormExp == `FP16_EXPW'd0) & ~OFin);
+  assign denormalized = ((unnormExp == 0) & ~OFin);
 
   // Post denormalized mantissa.
   logic [PFW - 1:0] postDenormFrac;
 
   // Denormalized shift amount.
-  logic [`FP16_FRACW - 1:0] denormShiftAmount;
+  logic [FRACW - 1:0] denormShiftAmount;
 
   // Rounding bits for both normal and denormal formats.
   logic guard, round;
@@ -138,21 +142,21 @@ module fpuNormalizer16
   logic [1:0] postDenormInt;
 
   // Denorm diff may be negative.
-  logic [`FP16_FRACW - 1:0] absDenormDiff;
+  logic [EXPW - 1:0] absDenormDiff;
 
   // Calcualte LZC (shifts).
   fpuLZC #(.WIDTH(PFW)) fpuMulLZC(.lzcIn(unnormFrac), .lzcOut(lzc));
 
   // Check if biased exponent is 0 (denormalized), so shift binary point left 1.
   always_comb begin
-    normOut.exp = OF ? {`FP16_FRACW{'1}} : roundedExp;
+    normOut.exp = OF ? {FRACW{'1}} : roundedExp;
     postDenormInt = explicitSig[PFW + 1:PFW];
 
     if (denormalized) begin
-      normOut.frac = OF ? `FP16_FRACW'd0 :
-                           roundedPostDenormFrac[PFW - 1:PFW - `FP16_FRACW] + (denormRound & (denormGuard | sticky));
+      normOut.frac = OF ? FRACW'(0) :
+                           roundedPostDenormFrac[PFW - 1:PFW - FRACW] + (denormRound & (denormGuard | sticky));
 
-      if (denormDiff[`FP16_FRACW - 1]) begin
+      if (denormDiff[EXPW - 1]) begin
         {postDenormInt, postDenormFrac} = (div) ? explicitSig >> denormShiftAmount : explicitSig << denormShiftAmount;
       end
 
@@ -162,8 +166,8 @@ module fpuNormalizer16
     end
 
     else begin
-      postDenormFrac = (div) ? explicitSig[PFW - 1:PFW - `FP16_FRACW] : explicitSig[PFW - `FP16_FRACW:0];
-      normOut.frac = OF ? `FP16_FRACW'd0 : roundedFrac;
+      postDenormFrac = (div) ? explicitSig[PFW - 1:PFW - FRACW] : explicitSig[PFW - FRACW:0];
+      normOut.frac = OF ? FRACW'(0) : roundedFrac;
     end
   end
 
@@ -173,26 +177,26 @@ module fpuNormalizer16
     normOut.sign = unnormSign;
 
     // Default guard bit is the top bit in the extended part.
-    guard = explicitSig[PFW - `FP16_FRACW];
-    round = explicitSig[PFW - `FP16_FRACW - 1];
-    denormGuard = postDenormFrac[PFW - `FP16_FRACW];
-    denormRound = postDenormFrac[PFW - `FP16_FRACW - 1];
+    guard = explicitSig[PFW - FRACW];
+    round = explicitSig[PFW - FRACW - 1];
+    denormGuard = postDenormFrac[PFW - FRACW];
+    denormRound = postDenormFrac[PFW - FRACW - 1];
     preRoundOF = 1'b0;
-    absDenormDiff = (denormDiff[`FP16_FRACW - 1]) ? ~(denormDiff) + `FP16_FRACW'd1 : denormDiff;
+    absDenormDiff = (denormDiff[EXPW - 1]) ? ~(denormDiff) + EXPW'(1) : denormDiff;
     denormShiftAmount = (absDenormDiff + 1);
 
     if (unnormInt > 2'd1) begin
-      preRoundExp = (denormalized) ? unnormExp : unnormExp + `FP16_EXPW'd1;
+      preRoundExp = (denormalized) ? unnormExp : unnormExp + EXPW'(1);
 
-      if (preRoundExp > `FP16_EXP_MAX) begin
+      if (preRoundExp > EXP_MAX) begin
         preRoundOF = 1'b1;
       end
 
       explicitSig = {unnormInt, unnormFrac} >> 1;
       denormShiftAmount--;
 
-      guard = unnormFrac[PFW - `FP16_FRACW + 1];
-      round = unnormFrac[PFW - `FP16_FRACW];
+      guard = unnormFrac[PFW - FRACW + 1];
+      round = unnormFrac[PFW - FRACW];
     end
 
     else if (unnormInt == 2'b0) begin
@@ -202,7 +206,7 @@ module fpuNormalizer16
       end
 
       else begin
-        preRoundExp = `FP16_EXPW'd0;
+        preRoundExp = 0;
         explicitSig = {unnormInt, unnormFrac};
       end
     end
@@ -216,20 +220,20 @@ module fpuNormalizer16
   // Rounding logic.
   always_comb begin
     roundedExp = (denormalized && (postDenormInt != 2'd0)) ?
-                 `FP16_EXPW'd1 :
-                 preRoundExp;
+                 EXPW'(1) : preRoundExp;
+
     roundNormOF = 1'b0;
 
     // Round up case.
     if (round & (sticky | guard)) begin
-      roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] + `FP16_FRACW'd1;
+      roundedFrac = explicitSig[PFW - 1:PFW - FRACW] + FRACW'(1);
 
       // Overflow to exponent.
       if (roundedFrac == '0) begin
         // TODO: NaNs and infinites.
-        roundedExp = preRoundExp + `FP16_EXPW'd1;
+        roundedExp = preRoundExp + EXPW'(1);
 
-        if (roundedExp == `FP16_EXPW'd0 || roundedExp > `FP16_EXP_MAX) begin
+        if (roundedExp == 0 || roundedExp > EXP_MAX) begin
           roundNormOF = 1;
         end
       end
@@ -237,26 +241,27 @@ module fpuNormalizer16
 
     // Round to even case.
     else if (guard & round & ~sticky) begin
-      roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW] & 16'hFFFD;
+      roundedFrac = explicitSig[PFW - 1:PFW - FRACW] & 16'hFFFD;
     end
 
     // Otherwise do nothing.
     else begin
-      roundedFrac = explicitSig[PFW - 1:PFW - `FP16_FRACW];
+      roundedFrac = explicitSig[PFW - 1:PFW - FRACW];
     end
   end
 
   // Result is inexact if any shifted out bits are 1.
   assign NX = (sticky | round);
-  assign UF = ~OF && (roundedExp == `FP16_EXPW'd0 && roundedFrac != `FP16_FRACW'd0);
-endmodule : fpuNormalizer16
+  assign UF = ~OF && (roundedExp == 0 && roundedFrac != 0);
+endmodule : fpuNormalizer
 
 /* Sorts two inputs such that the larger magnitude number is stored in largeNum,
 *  and the smaller in smallNum.
 */
 module fpuAddSubSorter
-  (input  fp16_t fpuIn1, fpuIn2,
-   output fp16_t largeNum, smallNum);
+  #(parameter type FP_T = fp16_t)
+  (input  FP_T fpuIn1, fpuIn2,
+   output FP_T largeNum, smallNum);
 
   assign {largeNum, smallNum} = ({fpuIn1.exp, fpuIn1.frac} > {fpuIn2.exp, fpuIn2.frac}) ?
                                 {fpuIn1, fpuIn2} : {fpuIn2, fpuIn1};
@@ -266,14 +271,17 @@ endmodule : fpuAddSubSorter
 * Checks that an input is either infinity or NaN.
 */
 module fpuIsSpecialValue
-  (input  fp16_t fpuIn,
-   output logic  inf, nan);
+  #(parameter type FP_T = fp16_t,
+    parameter int FRACW = 10,
+    parameter int EXPW = 5)
+  (input  FP_T  fpuIn,
+   output logic inf, nan);
 
   always_comb begin
     inf = 1'b0;
     nan = 1'b0;
-    if (fpuIn.exp == {`FP16_EXPW{'1}}) begin
-      if (fpuIn.frac == {`FP16_FRACW{'0}}) begin
+    if (fpuIn.exp == {EXPW{1'b1}}) begin
+      if (fpuIn.frac == {FRACW{1'b0}}) begin
         inf = 1'b1;
       end
 

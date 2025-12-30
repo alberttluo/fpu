@@ -13,17 +13,17 @@
 // Bit widths for FP16 (half-precision).
 `define FP16_EXPW    5
 `define FP16_FRACW   10
-`define FP16_BIAS    `FP16_EXPW'd15
-`define FP16_EXP_MAX `FP16_EXPW'd30
 `define FP16_NAN     16'h7E00
 
 // Bit widths for FP32 (single-precision).
 `define FP32_EXPW  8
 `define FP32_FRACW 23
+`define FP32_NAN   32'h7F800000
 
 // Bit widths for FP64 (double-precision).
 `define FP64_EXPW  11
 `define FP64_FRACW 52
+`define FP64_NAN   64'h3FF8000000000000
 
 // Half-precision IEEE 754 float.
 typedef struct packed {
