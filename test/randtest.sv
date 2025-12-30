@@ -161,8 +161,11 @@ module fpuRandTest();
       else if (opStr == "SUB") begin
         doSub(in1, in2);
       end
-      else begin
+      else if (opStr == "MUL") begin
         doMultiply(in1, in2);
+      end
+      else begin
+        doDiv(in1, in2);
       end
 
       if (fpuOut != expected) begin
