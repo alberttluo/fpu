@@ -159,7 +159,7 @@ module fpuNormalizer16
     end
 
     else begin
-      postDenormFrac = explicitSig[PFW - `FP16_FRACW:0];
+      postDenormFrac = (div) ? explicitSig[PFW - 1:PFW - `FP16_FRACW] : explicitSig[PFW - `FP16_FRACW:0];
       normOut.frac = OF ? `FP16_FRACW'd0 : roundedFrac;
     end
   end
