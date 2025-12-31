@@ -91,7 +91,7 @@ module fpuDiv
                               .unnormFrac,
                               .unnormExp(denorm ? EXPW'(0) : unnormExp),
                               .denormDiff(EXPW'(BIAS) + (fpuIn1.exp - fpuIn2.exp)),
-                              .sticky(1'b0),
+                              .sticky(unnormFrac[FRACW - 1:0] != 0),
                               .OFin, .div(1'b1),
                               .normOut(fpuOut),
                               .opStatusFlags);
