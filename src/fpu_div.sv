@@ -18,6 +18,7 @@ module fpuDiv
   #(parameter type FP_T = fp16_t,
     parameter int FRACW = 10,
     parameter int EXPW = 5,
+    parameter int EXP_MAX = (1 << EXPW) - 2,
     parameter int BIAS = 15)
   (input  FP_T           fpuIn1, fpuIn2,
    input  logic          clock, reset, start,
@@ -25,8 +26,6 @@ module fpuDiv
    output logic          done,
    output condCode_t     condCodes,
    output opStatusFlag_t opStatusFlags);
-
-  localparam int unsigned EXP_MAX = (1 << EXPW) - 2;
 
   // Condition codes.
   logic Z, C, N, V;
@@ -84,17 +83,18 @@ module fpuDiv
   assign {expCarry, unnormExp} = fpuIn1.exp - fpuIn2.exp + BIAS;
 
   // Ensure that underflow from the above computation does not signal OF.
-  assign denorm = ((fpuIn1.exp + fpuIn2.exp) <= {expCarry, unnormExp});
+  assign denorm = (fpuIn1.exp + BIAS <= fpuIn2.exp);
   assign OFin = ((expCarry & ~denorm) | ~denorm & (unnormExp == {EXPW{1'b1}} | unnormExp > EXP_MAX));
-  fpuNormalizer16 #(.PFW(2 * FRACW)) divNormalizer(.unnormSign(outSign),
-                                                   .unnormInt,
-                                                   .unnormFrac,
-                                                   .unnormExp(denorm ? EXPW'(0) : unnormExp),
-                                                   .denormDiff(BIAS + (fpuIn1.exp - fpuIn2.exp)),
-                                                   .sticky(1'b0),
-                                                   .OFin, .div(1'b1),
-                                                   .normOut(fpuOut),
-                                                   .opStatusFlags);
+  fpuNormalizer #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .EXP_MAX(EXP_MAX), .PFW(2 * FRACW))
+                divNormalizer(.unnormSign(outSign),
+                              .unnormInt,
+                              .unnormFrac,
+                              .unnormExp(denorm ? EXPW'(0) : unnormExp),
+                              .denormDiff(EXPW'(BIAS) + (fpuIn1.exp - fpuIn2.exp)),
+                              .sticky(1'b0),
+                              .OFin, .div(1'b1),
+                              .normOut(fpuOut),
+                              .opStatusFlags);
 
   assign Z = (fpuOut == 0);
   assign C = 1'b0;

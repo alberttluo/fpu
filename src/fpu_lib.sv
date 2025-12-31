@@ -123,7 +123,7 @@ module fpuNormalizer
 
   // Denormalized detection.
   logic denormalized;
-  assign denormalized = ((unnormExp == 0) & ~OFin);
+  assign denormalized = ((unnormExp == EXPW'(0)) & ~OFin);
 
   // Post denormalized mantissa.
   logic [PFW - 1:0] postDenormFrac;
