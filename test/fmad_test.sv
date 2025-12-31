@@ -13,12 +13,13 @@ module fmad_test();
   logic [WIDTH - 1:0] fmadMulIn2;
   logic [WIDTH - 1:0] fmadAddIn;
   logic [OUTWIDTH - 1:0] fmadOut;
-  logic start, clock, reset, fmadDone;
+  logic start, clock, reset, fmadDone, sub;
 
   fmad #(.WIDTH(WIDTH)) DUT(.*);
 
   task automatic doFMAD
-    (input logic [WIDTH - 1:0] m1, m2, a);
+    (input logic [WIDTH - 1:0] m1, m2, a,
+     input logic s);
     reset <= 0;
     #1;
     reset <= 1;
@@ -28,6 +29,7 @@ module fmad_test();
     fmadMulIn1 <= m1;
     fmadMulIn2 <= m2;
     fmadAddIn <= a;
+    sub <= s;
     start <= 1;
     @(posedge clock);
     start <= 0;
@@ -36,10 +38,8 @@ module fmad_test();
       @(posedge clock);
     end
 
-    $display("Result of FMAD(%d, %d, %d) = %d",
-             m1, m2, a, fmadOut);
-    $display("mulOut = %d\n",
-             DUT.mulOut);
+    $display("Result of FMAD(%d, %d, %d, %s) = %d",
+             m1, m2, a,  s ? "SUB" : "ADD", fmadOut);
   endtask
 
   function automatic logic [WIDTH - 1:0] randNum();
@@ -56,7 +56,9 @@ module fmad_test();
 
   initial begin
     for (int i = 0; i < 100; i++) begin
-      doFMAD(randNum(), randNum(), randNum());
+      doFMAD(randNum(), randNum(), randNum(), 0);
+      @(posedge clock);
+      doFMAD(randNum(), randNum(), randNum(), 1);
     end
 
     $finish;

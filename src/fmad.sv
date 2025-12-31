@@ -23,6 +23,7 @@ module fmad
   (input  logic [WIDTH - 1:0]    fmadMulIn1, fmadMulIn2,
                                  fmadAddIn,
    input  logic                  start, clock, reset,
+   input  logic                  sub,
    output logic [OUTWIDTH - 1:0] fmadOut,
    output logic                  fmadDone);
 
@@ -36,7 +37,8 @@ module fmad
     end
 
     else if (fmadAddEn) begin
-      fmadOut <= mulOut + {{WIDTH{1'b0}}, fmadAddIn};
+      fmadOut <= (sub) ? mulOut - {{WIDTH{1'b0}}, fmadAddIn} :
+                         mulOut + {{WIDTH{1'b0}}, fmadAddIn};
     end
   end
 
