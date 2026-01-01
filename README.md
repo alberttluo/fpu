@@ -42,4 +42,4 @@ This generates the ```randtest``` executable, which will generate a two files:
  * One that shows all the valid, incorrect outputs. (Some wrong outputs are tolerated due to precision differences between this implementation and the IEEE754 standard).
 
 ## Progress
-Division is going...There are some bugs with normalization, but there are no problems with dividing mantissas and other things. I will probably finish by the end of this week. 
+The 4 basic arithmetic operations are working, however, division is slow. The current implementation uses restoring division, with takes cycles proportional to the fractional width. This can be done in roughly 2-3 cycles with Newton-Raphson, but will sacrifice some accuracy. 
