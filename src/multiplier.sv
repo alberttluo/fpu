@@ -10,7 +10,6 @@
 `ifndef sv_MUL
 `define sv_MUL
 
-`include "constants.sv"
 `include "library.sv"
 
 typedef enum logic[1:0] {
@@ -20,7 +19,7 @@ typedef enum logic[1:0] {
 } fpuMultiplyState_t;
 
 module fpuMultiplier
-  #(parameter int FRAC_WIDTH = `FP16_FRACW)
+  #(parameter int FRAC_WIDTH = 10)
   (input  logic[FRAC_WIDTH:0]     mulIn1, mulIn2,
    input  logic                    start,
    input  logic                    clock, reset,
@@ -48,7 +47,7 @@ module fpuMultiplier
     end
   end
 
-  assign compDone = (shift == 11'd11);
+  assign compDone = (storedIn2 == 0);
 
   // Registers to latch input value, in case they change during computation.
   Register #(.WIDTH(FRAC_WIDTH + 1)) inReg1(.en(start), .clear('0), .clock,
@@ -103,4 +102,22 @@ module fpuMultiplierFSM
     endcase
   end
 endmodule : fpuMultiplierFSM
+
+module halfAdder
+  (input  logic in1, in2,
+   output logic sum, cout);
+
+  assign sum = in1 ^ in2;
+  assign cout = in1 & in2;
+endmodule : halfAdder
+
+module fullAdder
+  (input  logic in1, in2, cin,
+   output logic sum, cout);
+
+  logic iSum, iCout;
+
+  halfAdder ha1(.in1, .in2, .sum(iSum), .cout(iCout)),
+            ha2(.in1(iSum), .in2(cin), .sum, .cout);
+endmodule : fullAdder
 `endif
