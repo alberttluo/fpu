@@ -1,5 +1,5 @@
 /*
-* multiplier.sv: Sequential, unsigned multiplier for multiplying mantissas. Process is started by
+* multiplier.sv: Unsigned multiplier for multiplying mantissas. Process is started by
 * asserting the start signal (for one clock cycle). The result is ready when the done signal is asserted.
 * To start computation with new inputs, reset must first be asserted, then the
 * same start process.
@@ -103,21 +103,72 @@ module fpuMultiplierFSM
   end
 endmodule : fpuMultiplierFSM
 
-module halfAdder
-  (input  logic in1, in2,
-   output logic sum, cout);
+// 24-bit Radix-4 multiplier for fp32 (and fp16).
+module radix4Mult32
+  #(parameter int FRACW = 23,
+    parameter int WIDTH = FRACW + 1,
+    parameter int OUTWIDTH = (WIDTH << 1))
+   (input  logic [WIDTH - 1:0]    mulIn1, mulIn2,
+    input  logic                  clock, reset, start,
+    output logic [OUTWIDTH - 1:0] mulOut,
+    output logic                  done);
 
-  assign sum = in1 ^ in2;
-  assign cout = in1 & in2;
-endmodule : halfAdder
+   localparam int ITERS = (WIDTH + 1) / 2;
 
-module fullAdder
-  (input  logic in1, in2, cin,
-   output logic sum, cout);
+   // Pad LSB of multiplier with one 0 and MSB with two 0s.
+   logic [WIDTH + 2:0] storedMultiplier_shiftReg;
 
-  logic iSum, iCout;
+   // Three radix bits for radix-4.
+   logic [2:0] radixBits;
 
-  halfAdder ha1(.in1, .in2, .sum(iSum), .cout(iCout)),
-            ha2(.in1(iSum), .in2(cin), .sum, .cout);
-endmodule : fullAdder
+   // Counter for number of iterations.
+   logic [$clog2(ITERS + 1) - 1:0] iterCounter;
+   logic compDone;
+   logic compEn;
+   assign compDone = (iterCounter == ITERS);
+
+   // Extended multiplicand so signed arithmetic works properly.
+   logic signed [OUTWIDTH:0] extMultiplicand;
+
+   // Current partial product;
+   logic signed [OUTWIDTH:0] currPP;
+
+   // Accumulator (signed).
+   logic [OUTWIDTH + 1:0] acc;
+
+   always_ff @(posedge clock, posedge reset) begin
+     if (start) begin
+       storedMultiplier_shiftReg <= {2'd0, mulIn2, 1'b0};
+       iterCounter <= 0;
+       acc <= 0;
+     end
+
+     else if (compEn) begin
+       storedMultiplier_shiftReg <= (storedMultiplier_shiftReg >> 2);
+       iterCounter <= (iterCounter + 1);
+       acc <= acc + ($signed(currPP) << (iterCounter << 1));
+     end
+   end
+
+   assign radixBits = storedMultiplier_shiftReg[2:0];
+
+   always_comb begin
+     extMultiplicand = $signed({1'b0, mulIn1});
+
+     unique case (radixBits)
+       3'b000: currPP = 0;
+       3'b001: currPP = extMultiplicand;
+       3'b010: currPP = extMultiplicand;
+       3'b011: currPP = (extMultiplicand << 1);
+       3'b100: currPP = -(extMultiplicand << 1);
+       3'b101: currPP = -extMultiplicand;
+       3'b110: currPP = -extMultiplicand;
+       3'b111: currPP = 0;
+     endcase
+   end
+
+   assign mulOut = acc[OUTWIDTH - 1:0];
+
+  fpuMultiplierFSM FSM(.*);
+endmodule : radix4Mult32
 `endif
