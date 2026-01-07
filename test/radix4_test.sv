@@ -8,7 +8,7 @@
 `include "multiplier.sv"
 
 module radix4_test();
-  localparam int FRACW = 10;
+  localparam int FRACW = 55;
   localparam int WIDTH = FRACW + 1;
   localparam int OUTW = (WIDTH << 1);
 
@@ -44,22 +44,21 @@ module radix4_test();
 
     while (~done) @(posedge clock);
 
+    assert(mulOut == in1 * in2);
+
     $display("Result of %d (%b) * %d (%b) = %d (%b)",
              in1, in1, in2, in2, mulOut, mulOut);
   endtask
 
   initial begin
-    // $monitor("mulIn1 = %d   mulIn2 = %d\n",
-    //          mulIn1, mulIn2,
+    // $monitor("mulIn1 = %d   mulIn2 = %d\n   mulOut = %d\n   acc = %d\n",
+    //          mulIn1, mulIn2, mulOut, DUT.acc,
     //          "radixBits = %b   currPP = %d\n",
     //          DUT.radixBits, DUT.currPP,
-    //          "shiftReg = %b\n",
-    //          DUT.storedMultiplier_shiftReg);
+    //          "shiftReg = %b   iterCount = %d\n",
+    //          DUT.storedMultiplier_shiftReg, DUT.iterCounter);
 
-    doMultiply(10, 2);
-    doMultiply(48, 52);
-    doMultiply(7, 99);
-    for (int i = 0; i < 10; i++) begin
+    for (int i = 0; i < 100; i++) begin
       doMultiply($urandom, $urandom);
     end
     $finish;
