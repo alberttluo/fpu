@@ -113,61 +113,55 @@ module radix4Mult32
     output logic [OUTWIDTH - 1:0] mulOut,
     output logic                  done);
 
-   localparam int ITERS = (WIDTH + 1) / 2;
+   localparam int ITERS = (WIDTH / 2 + 1);
 
-   // Pad LSB of multiplier with one 0 and MSB with two 0s.
-   logic [WIDTH + 2:0] storedMultiplier_shiftReg;
+   // Pad MSB of multiplier with two zeros;
+   logic [WIDTH + 1:0] storedMultiplier_shiftReg;
 
-   // Three radix bits for radix-4.
-   logic [2:0] radixBits;
+   // Two radix bits for radix-4.
+   logic [1:0] radixBits;
 
    // Counter for number of iterations.
-   logic [$clog2(ITERS + 1) - 1:0] iterCounter;
+   int unsigned iterCounter;
    logic compDone;
    logic compEn;
-   assign compDone = (iterCounter == ITERS);
+   assign compDone = (iterCounter == ITERS + 1);
 
    // Extended multiplicand so signed arithmetic works properly.
-   logic signed [OUTWIDTH:0] extMultiplicand;
+   logic [OUTWIDTH - 1:0] extMultiplicand;
 
    // Current partial product;
-   logic signed [OUTWIDTH:0] currPP;
+   logic [OUTWIDTH - 1:0] currPP;
 
-   // Accumulator (signed).
-   logic [OUTWIDTH + 1:0] acc;
+   // Addend from partial product.
+   logic [OUTWIDTH - 1:0] addend;
+   assign addend = (currPP << (iterCounter << 1));
 
-   always_ff @(posedge clock, posedge reset) begin
+   always_ff @(posedge clock) begin
      if (start) begin
-       storedMultiplier_shiftReg <= {2'd0, mulIn2, 1'b0};
+       storedMultiplier_shiftReg <= {2'b00, mulIn2};
        iterCounter <= 0;
-       acc <= 0;
+       mulOut <= 0;
+       extMultiplicand <= mulIn1;
      end
 
      else if (compEn) begin
        storedMultiplier_shiftReg <= (storedMultiplier_shiftReg >> 2);
        iterCounter <= (iterCounter + 1);
-       acc <= acc + ($signed(currPP) << (iterCounter << 1));
+       mulOut <= mulOut + addend;
      end
    end
 
-   assign radixBits = storedMultiplier_shiftReg[2:0];
+   assign radixBits = storedMultiplier_shiftReg[1:0];
 
    always_comb begin
-     extMultiplicand = $signed({1'b0, mulIn1});
-
      unique case (radixBits)
-       3'b000: currPP = 0;
-       3'b001: currPP = extMultiplicand;
-       3'b010: currPP = extMultiplicand;
-       3'b011: currPP = (extMultiplicand << 1);
-       3'b100: currPP = -(extMultiplicand << 1);
-       3'b101: currPP = -extMultiplicand;
-       3'b110: currPP = -extMultiplicand;
-       3'b111: currPP = 0;
+       2'b00: currPP = 0;
+       2'b01: currPP = extMultiplicand;
+       2'b10: currPP = (extMultiplicand << 1);
+       2'b11: currPP = (extMultiplicand << 1) + extMultiplicand;
      endcase
    end
-
-   assign mulOut = acc[OUTWIDTH - 1:0];
 
   fpuMultiplierFSM FSM(.*);
 endmodule : radix4Mult32
