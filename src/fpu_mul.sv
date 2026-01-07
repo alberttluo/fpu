@@ -65,9 +65,9 @@ module fpuMul
   assign sigMulIn2 = (fpuIn2.exp == '0) ? {1'b0, fpuIn2.frac} : {1'b1, fpuIn2.frac};
 
   // Sequential multiplier to multiply significands.
-  radix4Mult32 #(.FRACW(FRACW)) sigMultiplier(.mulIn1(sigMulIn1), .mulIn2(sigMulIn2), .start,
-                                              .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}),
-                                              .done(sigMulDone));
+  radix16Mult #(.FRACW(FRACW)) sigMultiplier(.mulIn1(sigMulIn1), .mulIn2(sigMulIn2), .start,
+                                             .clock, .reset, .mulOut({sigMulOutInt, sigMulOutFrac}),
+                                             .done(sigMulDone));
 
   assign sticky = sigMulOutFrac[FRACW - 1:0] != 0;
   fpuNormalizer #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .EXP_MAX(EXP_MAX), .PFW(2 * FRACW))

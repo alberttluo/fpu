@@ -103,8 +103,7 @@ module fpuMultiplierFSM
   end
 endmodule : fpuMultiplierFSM
 
-// 24-bit Radix-4 multiplier for fp32 (and fp16).
-module radix4Mult32
+module radix16Mult
   #(parameter int FRACW = 23,
     parameter int WIDTH = FRACW + 1,
     parameter int OUTWIDTH = (WIDTH << 1))
@@ -113,13 +112,13 @@ module radix4Mult32
     output logic [OUTWIDTH - 1:0] mulOut,
     output logic                  done);
 
-   localparam int ITERS = (WIDTH / 2 + 1);
+   localparam int ITERS = $ceil(WIDTH / 4);
 
-   // Pad MSB of multiplier with two zeros;
-   logic [WIDTH + 1:0] storedMultiplier_shiftReg;
+   // Pad MSB of multiplier with four zeros.
+   logic [WIDTH + 3:0] storedMultiplier_shiftReg;
 
-   // Two radix bits for radix-4.
-   logic [1:0] radixBits;
+   // Four radix bits for radix-16.
+   logic [3:0] radixBits;
 
    // Counter for number of iterations.
    int unsigned iterCounter;
@@ -135,34 +134,46 @@ module radix4Mult32
 
    // Addend from partial product.
    logic [OUTWIDTH - 1:0] addend;
-   assign addend = (currPP << (iterCounter << 1));
+   assign addend = (currPP << (iterCounter << 2));
 
    always_ff @(posedge clock) begin
      if (start) begin
-       storedMultiplier_shiftReg <= {2'b00, mulIn2};
+       storedMultiplier_shiftReg <= {4'd0, mulIn2};
        iterCounter <= 0;
        mulOut <= 0;
        extMultiplicand <= mulIn1;
      end
 
      else if (compEn) begin
-       storedMultiplier_shiftReg <= (storedMultiplier_shiftReg >> 2);
+       storedMultiplier_shiftReg <= (storedMultiplier_shiftReg >> 4);
        iterCounter <= (iterCounter + 1);
        mulOut <= mulOut + addend;
      end
    end
 
-   assign radixBits = storedMultiplier_shiftReg[1:0];
+   assign radixBits = storedMultiplier_shiftReg[3:0];
 
    always_comb begin
      unique case (radixBits)
-       2'b00: currPP = 0;
-       2'b01: currPP = extMultiplicand;
-       2'b10: currPP = (extMultiplicand << 1);
-       2'b11: currPP = (extMultiplicand << 1) + extMultiplicand;
+       4'b0000: currPP = 0;
+       4'b0001: currPP = extMultiplicand;
+       4'b0010: currPP = (extMultiplicand << 1);
+       4'b0011: currPP = (extMultiplicand << 1) + extMultiplicand;
+       4'b0100: currPP = (extMultiplicand << 2);
+       4'b0101: currPP = (extMultiplicand << 2) + extMultiplicand;
+       4'b0110: currPP = (extMultiplicand << 2) + (extMultiplicand << 1);
+       4'b0111: currPP = (extMultiplicand << 2) + (extMultiplicand << 1) + extMultiplicand;
+       4'b1000: currPP = (extMultiplicand << 3);
+       4'b1001: currPP = (extMultiplicand << 3) + extMultiplicand;
+       4'b1010: currPP = (extMultiplicand << 3) + (extMultiplicand << 1);
+       4'b1011: currPP = (extMultiplicand << 3) + (extMultiplicand << 1) + extMultiplicand;
+       4'b1100: currPP = (extMultiplicand << 3) + (extMultiplicand << 2);
+       4'b1101: currPP = (extMultiplicand << 3) + (extMultiplicand << 2) + extMultiplicand;
+       4'b1110: currPP = (extMultiplicand << 3) + (extMultiplicand << 2) + (extMultiplicand << 1);
+       4'b1111: currPP = (extMultiplicand << 3) + (extMultiplicand << 2) + (extMultiplicand << 1) + extMultiplicand;
      endcase
    end
 
   fpuMultiplierFSM FSM(.*);
-endmodule : radix4Mult32
+endmodule : radix16Mult
 `endif
