@@ -10,63 +10,11 @@
 `ifndef sv_MUL
 `define sv_MUL
 
-`include "library.sv"
-
 typedef enum logic[1:0] {
   MUL_WAIT,
   MUL_COMP,
   MUL_DONE
 } fpuMultiplyState_t;
-
-module fpuMultiplier
-  #(parameter int FRAC_WIDTH = 10)
-  (input  logic[FRAC_WIDTH:0]     mulIn1, mulIn2,
-   input  logic                    start,
-   input  logic                    clock, reset,
-   output logic[2 * FRAC_WIDTH + 1:0] mulOut,
-   output logic                    done);
-
-  // All components share one enable signal.
-  logic compEn;
-
-  // TODO: Optimize logic so that smaller input on bottom.
-  logic compDone;
-  logic [FRAC_WIDTH:0] shift;
-  logic [2 * FRAC_WIDTH + 1:0] adderOut;
-  logic [2 * FRAC_WIDTH + 1:0] adderIn;
-  logic [FRAC_WIDTH:0] latchedIn1;
-  logic [FRAC_WIDTH:0] storedIn2;
-
-  // Shift register for mulIn2.
-  always_ff @(posedge clock) begin
-    if (start) begin
-      storedIn2 <= mulIn2;
-    end
-    else if (compEn) begin
-      storedIn2 <= storedIn2 >> 1;
-    end
-  end
-
-  assign compDone = (storedIn2 == 0);
-
-  // Registers to latch input value, in case they change during computation.
-  Register #(.WIDTH(FRAC_WIDTH + 1)) inReg1(.en(start), .clear('0), .clock,
-                                         .D(mulIn1), .Q(latchedIn1));
-  // Register for output value.
-  Register #(.WIDTH(2 * (FRAC_WIDTH + 1))) outReg(.en(compEn), .clear(reset | start), .clock,
-                                             .D(adderOut), .Q(mulOut));
-
-  // Counter for shift amount.
-  Counter #(.WIDTH(FRAC_WIDTH + 1)) shiftCounter(.en(compEn), .clear(start), .load('0),
-                                              .up('1), .clock, .D('0), .Q(shift));
-
-  // Adder to calculate intermediate sums.
-  assign adderIn = (storedIn2[0]) ? ({{FRAC_WIDTH{1'b0}}, latchedIn1} << shift) : '0;
-  Adder #(.WIDTH(2 * (FRAC_WIDTH + 1))) adder(.cin('0), .A(mulOut), .B(adderIn),
-                                         .cout(), .sum(adderOut));
-
-  fpuMultiplierFSM FSM(.*);
-endmodule : fpuMultiplier
 
 module fpuMultiplierFSM
   (input  logic clock, reset, compDone, start,

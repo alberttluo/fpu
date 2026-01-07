@@ -8,7 +8,6 @@
 `define sv_DIV
 
 `include "constants.sv"
-`include "library.sv"
 
 typedef enum logic [1:0] {
   DIV_WAIT,

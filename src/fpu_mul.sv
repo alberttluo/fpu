@@ -6,7 +6,6 @@
 
 `include "constants.sv"
 `include "multiplier.sv"
-`include "library.sv"
 `include "fpu_lib.sv"
 
 typedef enum logic [1:0] {
