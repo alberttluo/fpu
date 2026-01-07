@@ -42,9 +42,9 @@ module fmad
     end
   end
 
-  fpuMultiplier #(.FRAC_WIDTH(WIDTH - 1)) multiplier(.mulIn1(fmadMulIn1), .mulIn2(fmadMulIn2),
-                                                     .start(mulStart), .clock, .reset, .mulOut,
-                                                     .done(mulDone));
+  radix4Mult32 #(.FRACW(WIDTH - 1)) multiplier(.mulIn1(fmadMulIn1), .mulIn2(fmadMulIn2),
+                                                    .start(mulStart), .clock, .reset, .mulOut,
+                                                    .done(mulDone));
 
   fmadFSM FSM(.*);
 endmodule : fmad
