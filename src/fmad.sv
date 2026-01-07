@@ -42,7 +42,7 @@ module fmad
     end
   end
 
-  radix16Mult #(.FRACW(WIDTH - 1)) multiplier(.mulIn1(fmadMulIn1), .mulIn2(fmadMulIn2),
+  radix16Mult #(.WIDTH(WIDTH)) multiplier(.mulIn1(fmadMulIn1), .mulIn2(fmadMulIn2),
                                               .start(mulStart), .clock, .reset, .mulOut,
                                               .done(mulDone));
 

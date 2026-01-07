@@ -52,8 +52,7 @@ module fpuMultiplierFSM
 endmodule : fpuMultiplierFSM
 
 module radix16Mult
-  #(parameter int FRACW = 23,
-    parameter int WIDTH = FRACW + 1,
+  #(parameter int WIDTH = 32,
     parameter int OUTWIDTH = (WIDTH << 1))
    (input  logic [WIDTH - 1:0]    mulIn1, mulIn2,
     input  logic                  clock, reset, start,

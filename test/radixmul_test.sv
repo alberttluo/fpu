@@ -8,8 +8,7 @@
 `include "multiplier.sv"
 
 module radix4_test();
-  localparam int FRACW = 16;
-  localparam int WIDTH = FRACW + 1;
+  localparam int WIDTH = 16;
   localparam int OUTW = (WIDTH << 1);
 
   logic [WIDTH - 1:0] mulIn1, mulIn2;
@@ -17,7 +16,7 @@ module radix4_test();
   logic [OUTW - 1:0] mulOut;
   logic done;
 
-  radix16Mult #(.FRACW(FRACW)) DUT(.*);
+  radix16Mult #(.WIDTH(WIDTH)) DUT(.*);
 
   initial begin
     reset = 1;
