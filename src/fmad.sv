@@ -23,7 +23,7 @@ module fmad
   (input  logic [WIDTH - 1:0]    fmadMulIn1, fmadMulIn2,
                                  fmadAddIn,
    input  logic                  start, clock, reset,
-   input  logic                  sub,
+   input  logic                  sub, negate,
    output logic [OUTWIDTH - 1:0] fmadOut,
    output logic                  fmadDone);
 
@@ -31,20 +31,28 @@ module fmad
   logic [OUTWIDTH - 1:0] mulOut;
   logic fmadAddEn;
 
+  // Latched inputs.
+  logic [WIDTH - 1:0] latchedM1;
+  logic [WIDTH - 1:0] latchedM2;
+  logic [WIDTH - 1:0] latchedA;
+
   always_ff @(posedge clock) begin
-    if (reset) begin
+    if (start) begin
       fmadOut <= {WIDTH{1'b0}};
+      latchedM1 <= fmadMulIn1;
+      latchedM2 <= fmadMulIn2;
+      latchedA <= fmadAddIn;
     end
 
     else if (fmadAddEn) begin
-      fmadOut <= (sub) ? mulOut - {{WIDTH{1'b0}}, fmadAddIn} :
-                         mulOut + {{WIDTH{1'b0}}, fmadAddIn};
+      fmadOut <= (sub) ? ((negate) ? -mulOut : mulOut) - {{WIDTH{1'b0}}, latchedA} :
+                         ((negate) ? -mulOut : mulOut) + {{WIDTH{1'b0}}, latchedA};
     end
   end
 
-  radix16Mult #(.WIDTH(WIDTH)) multiplier(.mulIn1(fmadMulIn1), .mulIn2(fmadMulIn2),
-                                              .start(mulStart), .clock, .reset, .mulOut,
-                                              .done(mulDone));
+  radix16Mult #(.WIDTH(WIDTH)) multiplier(.mulIn1(latchedM1), .mulIn2(latchedM2),
+                                          .start(mulStart), .clock, .reset, .mulOut,
+                                          .done(mulDone));
 
   fmadFSM FSM(.*);
 endmodule : fmad
