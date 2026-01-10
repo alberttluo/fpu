@@ -10,8 +10,8 @@ This implementation will, when completed, support the following operations.
   * Multiplication
   * Division
   * Square Root
-  * Fused Multiply-Add 
-  * Fused Multiply-Subtract
+  * Fused (Negate) Multiply-Add 
+  * Fused (Negate) Multiply-Subtract
   * Minimum/Maximum
   * Comparisons
   * Conversions between integers and other float formats
