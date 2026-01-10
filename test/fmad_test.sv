@@ -11,15 +11,17 @@ module fmad_test();
 
   logic [WIDTH - 1:0] fmadMulIn1;
   logic [WIDTH - 1:0] fmadMulIn2;
-  logic [WIDTH - 1:0] fmadAddIn;
+  logic [OUTWIDTH - 1:0] fmadAddIn;
   logic [OUTWIDTH - 1:0] fmadOut;
   logic start, clock, reset, fmadDone, sub, negate;
 
   fmad #(.WIDTH(WIDTH)) DUT(.*);
 
   task automatic doFMAD
-    (input logic [WIDTH - 1:0] m1, m2, a,
-     input logic s, n);
+    (input logic [WIDTH - 1:0] m1,
+     input logic [WIDTH - 1:0] m2,
+     input logic [OUTWIDTH - 1:0] a,
+     input logic s, logic n);
     reset <= 0;
     #1;
     reset <= 1;
@@ -43,10 +45,6 @@ module fmad_test();
              m1, m2, a,  s ? "SUB" : "ADD", n ? "NEG" : "POS", $signed(fmadOut), fmadOut);
   endtask
 
-  function automatic logic [WIDTH - 1:0] randNum();
-    return WIDTH'($urandom);
-  endfunction
-
   initial begin
     reset = 1;
     clock = 0;
@@ -57,13 +55,13 @@ module fmad_test();
 
   initial begin
     for (int i = 0; i < 100; i++) begin
-      doFMAD(randNum(), randNum(), randNum(), 0, 0);
+      doFMAD($urandom, $urandom, WIDTH'($urandom), 0, 0);
       @(posedge clock);
-      doFMAD(randNum(), randNum(), randNum(), 0, 1);
+      doFMAD($urandom, $urandom, WIDTH'($urandom), 0, 1);
       @(posedge clock);
-      doFMAD(randNum(), randNum(), randNum(), 1, 0);
+      doFMAD($urandom, $urandom, WIDTH'($urandom), 1, 0);
       @(posedge clock);
-      doFMAD(randNum(), randNum(), randNum(), 1, 1);
+      doFMAD($urandom, $urandom, WIDTH'($urandom), 1, 1);
     end
 
     $finish;

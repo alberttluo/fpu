@@ -13,10 +13,10 @@ module fpuRandTest();
   localparam int  WIDTH = $bits(fp16_t);
 
   // fpu16 signals.
-  FP_T         fpuIn1, fpuIn2;
+  FP_T         fpuIn1, fpuIn2, fpuIn3;
   fpuOp_t      op;
   logic        clock, reset, start;
-  logic        mulDone, divDone;
+  logic        fpuDone;
   FP_T         fpuOut;
   condCode_t   condCodes;
   statusFlag_t statusFlags;
@@ -65,7 +65,7 @@ module fpuRandTest();
     @(posedge clock);
     start <= 0;
 
-    while (~mulDone) @(posedge clock);
+    while (~fpuDone) @(posedge clock);
 
     // For sanity.
     repeat (2) @(posedge clock);
@@ -114,7 +114,55 @@ module fpuRandTest();
      @(posedge clock);
      start <= 0;
 
-     while (~divDone) @(posedge clock);
+     while (~fpuDone) @(posedge clock);
+
+     repeat (2) @(posedge clock);
+  endtask
+
+  task automatic doFMAD
+    (input FP_T in1,
+     input FP_T in2,
+     input FP_T in3);
+
+     reset <= 0;
+     #1;
+     reset <= 1;
+     #1;
+     reset <= 0;
+
+     fpuIn1 <= in1;
+     fpuIn2 <= in2;
+     fpuIn3 <= in3;
+     op <= FPU_FMAD;
+     start <= 1;
+     @(posedge clock);
+     start <= 0;
+
+     while (~fpuDone) @(posedge clock);
+
+     repeat (2) @(posedge clock);
+  endtask
+
+  task automatic doFMS
+    (input FP_T in1,
+     input FP_T in2,
+     input FP_T in3);
+
+     reset <= 0;
+     #1;
+     reset <= 1;
+     #1;
+     reset <= 0;
+
+     fpuIn1 <= in1;
+     fpuIn2 <= in2;
+     fpuIn3 <= in3;
+     op <= FPU_FMS;
+     start <= 1;
+     @(posedge clock);
+     start <= 0;
+
+     while (~fpuDone) @(posedge clock);
 
      repeat (2) @(posedge clock);
   endtask
@@ -131,6 +179,7 @@ module fpuRandTest();
   string opStr, line;
   logic [WIDTH - 1:0] in1;
   logic [WIDTH - 1:0] in2;
+  logic [WIDTH - 1:0] in3;
   FP_T expected;
 
   initial begin
@@ -155,8 +204,8 @@ module fpuRandTest();
     end
 
     // Parse input file and perform operations.
-    while ($fscanf(inFD, "%h %h %s %h\n", in1, in2, opStr, expected) == 4) begin
-      line = $sformatf("%h %h %s %h", in1, in2, opStr, expected);
+    while ($fscanf(inFD, "%h %h %h %s %h\n", in1, in2, in3, opStr, expected) == 5) begin
+      line = $sformatf("%h %h %h %s %h", in1, in2, in3, opStr, expected);
 
       if (opStr == "ADD") begin
         doAdd(in1, in2);
@@ -167,13 +216,22 @@ module fpuRandTest();
       else if (opStr == "MUL") begin
         doMultiply(in1, in2);
       end
-      else begin
+      else if (opStr == "DIV") begin
         doDiv(in1, in2);
+      end
+      else if (opStr == "FMAD") begin
+        doFMAD(in1, in2, in3);
+      end
+      else if (opStr == "FMS") begin
+        doFMS(in1, in2, in3);
+      end
+      else begin
+        $fatal("Unknown operation: %s\n", opStr);
       end
 
       if (fpuOut != expected) begin
-        $display("Wrong result for %h %h %s (expected %h, got %h)",
-                 in1, in2, opStr, expected, fpuOut);
+        $display("Wrong result for %h %h %h %s (expected %h, got %h)",
+                 in1, in2, in3, opStr, expected, fpuOut);
       end
 
       writeOutput(line, expected);

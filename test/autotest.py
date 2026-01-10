@@ -3,7 +3,7 @@ import numpy as np
 from argparse import ArgumentParser
 
 FILE = "randomOps.txt"
-OPS = ["ADD", "SUB", "MUL", "DIV"]
+OPS = ["ADD", "SUB", "MUL", "DIV", "FMAD", "FMS"]
 
 def genRandomOperands(nums: int):
     opList = []
@@ -12,9 +12,11 @@ def genRandomOperands(nums: int):
     while len(seenOps) < len(OPS) * nums: 
         in1Hex = np.uint16(random.getrandbits(16))
         in2Hex = np.uint16(random.getrandbits(16))
+        in3Hex = np.uint16(random.getrandbits(16))
         
         in1Float = in1Hex.view(np.float16)
         in2Float = in2Hex.view(np.float16)
+        in3Float = in3Hex.view(np.float16)
 
         for op in OPS:
             outFloat = 0
@@ -24,13 +26,17 @@ def genRandomOperands(nums: int):
                 outFloat = in1Float - in2Float
             elif (op == "MUL"):
                 outFloat = in1Float * in2Float
-            else:
+            elif (op == "DIV"):
                 if (in2Float != 0):
                     outFloat = in1Float / in2Float
+            elif (op == "FMAD"):
+                outFloat = (in1Float * in2Float) + in3Float
+            elif (op == "FMS"):
+                outFloat = (in1Float * in2Float) - in3Float
 
             outHex = outFloat.view(np.uint16)
             
-            line = f"{in1Hex:04x} {in2Hex:04x} {op} {outHex:04x}\n"            
+            line = f"{in1Hex:04x} {in2Hex:04x} {in3Hex:04x} {op} {outHex:04x}\n"            
 
             if line not in seenOps:
                 seenOps.add(line)

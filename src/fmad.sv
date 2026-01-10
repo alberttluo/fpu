@@ -21,7 +21,7 @@ module fmad
   #(parameter int WIDTH = `FP16_FRACW + 1,
     parameter int OUTWIDTH = 2 * WIDTH)
   (input  logic [WIDTH - 1:0]    fmadMulIn1, fmadMulIn2,
-                                 fmadAddIn,
+   input  logic [OUTWIDTH - 1:0] fmadAddIn,
    input  logic                  start, clock, reset,
    input  logic                  sub, negate,
    output logic [OUTWIDTH - 1:0] fmadOut,

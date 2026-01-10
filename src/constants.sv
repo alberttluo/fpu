@@ -8,7 +8,7 @@
 `ifndef sv_CONSTANTS
 `define sv_CONSTANTS
 
-`define NUM_OPS      4
+`define NUM_OPS      8 
 
 // Bit widths for FP16 (half-precision).
 `define FP16_EXPW    5
@@ -16,14 +16,14 @@
 `define FP16_NAN     16'h7E00
 
 // Bit widths for FP32 (single-precision).
-`define FP32_EXPW  8
-`define FP32_FRACW 23
-`define FP32_NAN   32'h7F800000
+`define FP32_EXPW    8
+`define FP32_FRACW   23
+`define FP32_NAN     32'h7F800000
 
 // Bit widths for FP64 (double-precision).
-`define FP64_EXPW  11
-`define FP64_FRACW 52
-`define FP64_NAN   64'h3FF8000000000000
+`define FP64_EXPW    11
+`define FP64_FRACW   52
+`define FP64_NAN     64'h3FF8000000000000
 
 // Half-precision IEEE 754 float.
 typedef struct packed {
@@ -46,11 +46,15 @@ typedef struct packed {
   logic [`FP64_FRACW - 1:0] frac;
 } fp64_t;
 
-typedef enum logic[$clog2(`NUM_OPS) - 1:0] {
+typedef enum logic[$clog2(`NUM_OPS + 1) - 1:0] {
   FPU_ADD,
   FPU_SUB,
   FPU_MUL,
-  FPU_DIV
+  FPU_DIV,
+  FPU_FMAD,
+  FPU_FMS,
+  FPU_FNMAD,
+  FPU_FNMS
 } fpuOp_t;
 
 typedef struct packed {
