@@ -43,3 +43,6 @@ This generates the ```randtest``` executable, which will generate a two files:
 
 ## Progress
 The 4 basic arithmetic operations and FMADs are working, however, division is slow. The current implementation uses restoring division, with takes cycles proportional to the fractional width. This can be done in roughly 2-3 cycles with Newton-Raphson (and a Wallace/Dadda multiplier), but will sacrifice some accuracy. 
+
+### Note about Branches
+I will continue work on the 'main' branch now, since I think it's getting pretty hectic with so many branches. 
