@@ -36,6 +36,8 @@ module fpu
   FP_T fpuFMSOut;
   FP_T fpuFNMADOut;
   FP_T fpuFNMSOut;
+  FP_T fpuMaxOut;
+  FP_T fpuMinOut;
 
   // Condition codes set by operations.
   condCode_t addCondCodes;
@@ -91,7 +93,7 @@ module fpu
 
   fpuComp #(.FP_T(FP_T)) fpuComp(.*);
 
-  fpuAddSub #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .EXP_MAX(EXP_MAX), .BIAS(BIAS)) 
+  fpuAddSub #(.FP_T(FP_T), .FRACW(FRACW), .EXPW(EXPW), .EXP_MAX(EXP_MAX), .BIAS(BIAS))
             fpuAdder(.sub(1'b0), .fpuIn1, .fpuIn2, .fpuOut(fpuAddOut),
                      .condCodes(addCondCodes), .opStatusFlags(addStatusFlags)),
             fpuSubtracter(.sub(1'b1), .fpuIn1, .fpuIn2, .fpuOut(fpuSubOut),
@@ -113,14 +115,14 @@ module fpu
                  .negate(1'b0), .fpuOut(fpuFMADOut), .done(fmadDone),
                  .condCodes(fmadCondCodes),
                  .opStatusFlags(fmadStatusFlags)),
-         fpuFMS(.fpuIn1, .fpuIn2, .fpuIn3, .clock, .reset, .start, .sub(1'b1), 
-                .negate(1'b0), .fpuOut(fpuFMSOut), .done(fmsDone), .condCodes(fmsCondCodes), 
+         fpuFMS(.fpuIn1, .fpuIn2, .fpuIn3, .clock, .reset, .start, .sub(1'b1),
+                .negate(1'b0), .fpuOut(fpuFMSOut), .done(fmsDone), .condCodes(fmsCondCodes),
                 .opStatusFlags(fmsStatusFlags)),
          fpuFNMAD(.fpuIn1, .fpuIn2, .fpuIn3, .clock, .reset, .start, .sub(1'b0), .negate(1'b1),
-                  .fpuOut(fpuFNMADOut), .done(fnmadDone), .condCodes(fnmadCondCodes), 
+                  .fpuOut(fpuFNMADOut), .done(fnmadDone), .condCodes(fnmadCondCodes),
                   .opStatusFlags(fnmadStatusFlags)),
          fpuFNMS(.fpuIn1, .fpuIn2, .fpuIn3, .clock, .reset, .start, .sub(1'b1), .negate(1'b1),
-                 .fpuOut(fpuFNMSOut), .done(fnmsDone), .condCodes(fnmsCondCodes), 
+                 .fpuOut(fpuFNMSOut), .done(fnmsDone), .condCodes(fnmsCondCodes),
                  .opStatusFlags(fnmsStatusFlags));
 
 
@@ -167,7 +169,7 @@ module fpu
         opStatusFlags = fmsStatusFlags;
         fpuDone = fmsDone;
       end
-      
+
       FPU_FNMAD: begin
         fpuOut = (anyNaNs) ? NAN : fpuFNMADOut;
         condCodes = fnmadCondCodes;
@@ -180,6 +182,21 @@ module fpu
         condCodes = fnmsCondCodes;
         opStatusFlags = fnmsStatusFlags;
         fpuDone = fnmsDone;
+      end
+
+      // Condition codes and status flags are not set for min/max operations.
+      FPU_MAX: begin
+        fpuOut = (gt) ? fpuIn1 : fpuIn2;
+        condCodes = 0;
+        opStatusFlags = 0;
+        fpuDone = 1;
+      end
+
+      FPU_MIN: begin
+        fpuOut = (lt) ? fpuIn1 : fpuIn2;
+        condCodes = 0;
+        opStatusFlags = 0;
+        fpuDone = 1;
       end
     endcase
   end

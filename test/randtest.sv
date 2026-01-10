@@ -167,6 +167,30 @@ module fpuRandTest();
      repeat (2) @(posedge clock);
   endtask
 
+  task automatic doMax
+    (input FP_T in1,
+     input FP_T in2);
+
+    fpuIn1 <= in1;
+    fpuIn2 <= in2;
+
+    op <= FPU_MAX;
+
+    repeat (2) @(posedge clock);
+   endtask
+
+  task automatic doMin
+    (input FP_T in1,
+     input FP_T in2);
+
+    fpuIn1 <= in1;
+    fpuIn2 <= in2;
+
+    op <= FPU_MIN;
+
+    repeat (2) @(posedge clock);
+   endtask
+
   // Clocking block.
   initial begin
     clock = 0;
@@ -224,6 +248,12 @@ module fpuRandTest();
       end
       else if (opStr == "FMS") begin
         doFMS(in1, in2, in3);
+      end
+      else if (opStr == "MAX") begin
+        doMax(in1, in2);
+      end
+      else if (opStr == "MIN") begin
+        doMin(in1, in2);
       end
       else begin
         $fatal("Unknown operation: %s\n", opStr);

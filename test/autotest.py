@@ -3,7 +3,7 @@ import numpy as np
 from argparse import ArgumentParser
 
 FILE = "randomOps.txt"
-OPS = ["ADD", "SUB", "MUL", "DIV", "FMAD", "FMS"]
+OPS = ["ADD", "SUB", "MUL", "DIV", "FMAD", "FMS", "MAX", "MIN"]
 
 def genRandomOperands(nums: int):
     opList = []
@@ -33,6 +33,10 @@ def genRandomOperands(nums: int):
                 outFloat = (in1Float * in2Float) + in3Float
             elif (op == "FMS"):
                 outFloat = (in1Float * in2Float) - in3Float
+            elif (op == "MAX"):
+                outFloat = np.maximum(in1Float, in2Float)
+            elif (op == "MIN"):
+                outFloat = np.minimum(in1Float, in2Float)
 
             outHex = outFloat.view(np.uint16)
             
