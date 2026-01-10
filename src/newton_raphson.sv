@@ -78,7 +78,7 @@ module newtonRaphsonReciprocal
   #(parameter int FRACW = 8,
     parameter int WIDTH = FRACW + 2,
     parameter int OUTWIDTH = 2 * WIDTH,
-    parameter int ITERS = $clog2(WIDTH))
+    parameter int unsigned ITERS = 4)
   (input  logic [WIDTH - 1:0] nrrIn,
    input  logic               start, reset, clock,
    output logic [WIDTH - 1:0] nrrOut,
@@ -86,6 +86,7 @@ module newtonRaphsonReciprocal
 
   localparam logic [WIDTH - 1:0] ONE = WIDTH'(1 << FRACW);
   localparam logic [WIDTH - 1:0] TWO = WIDTH'(2 << FRACW);
+  localparam logic [OUTWIDTH - 1:0] TWO_2F = (OUTWIDTH'(2) << (OUTWIDTH));
 
   int unsigned iterCounter;
 
@@ -100,7 +101,7 @@ module newtonRaphsonReciprocal
   logic [WIDTH - 1:0] mulIn2;
 
   logic itersDone;
-  assign itersDone = (iterCounter == ITERS);
+  assign itersDone = (iterCounter == (ITERS - 1));
 
   logic compEn, fmadDone, mulDone;
   logic fmadStart, mulStart;
@@ -113,18 +114,18 @@ module newtonRaphsonReciprocal
     end
 
     else if (mulDone) begin
-      nrrOut <= (nextOut >> FRACW);
+      nrrOut <= (nextOut >>> FRACW);
       iterCounter <= (iterCounter + 1);
     end
   end
 
   fmad #(.WIDTH(WIDTH)) nrrFMAD(.fmadMulIn1(nrrIn), .fmadMulIn2(nrrOut),
-                                .fmadAddIn(TWO), .start(fmadStart),
+                                .fmadAddIn(TWO_2F), .start(fmadStart),
                                 .clock, .reset, .sub(1'b0), .negate(1'b1),
                                 .fmadOut, .fmadDone);
 
   assign mulIn1 = nrrOut;
-  assign mulIn2 = (fmadOut >> FRACW);
+  assign mulIn2 = (fmadOut >>> FRACW);
 
   radix16Mult #(.WIDTH(WIDTH)) multiplier(.mulIn1, .mulIn2, .clock, .reset, .start(mulStart),
                                           .mulOut(nextOut), .done(mulDone));
